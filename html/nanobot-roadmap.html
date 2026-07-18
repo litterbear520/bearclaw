@@ -1,0 +1,1022 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nanobot — 从零到一百构建 Agent 项目</title>
+<style>
+  :root {
+    --canvas: #faf9f5;
+    --card: #efe9de;
+    --dark: #181715;
+    --dark-elevated: #252320;
+    --dark-soft: #1f1e1b;
+    --coral: #cc785c;
+    --coral-active: #a9583e;
+    --teal: #5db8a6;
+    --amber: #e8a55a;
+    --ink: #141413;
+    --body: #3d3d3a;
+    --body-strong: #252523;
+    --muted: #6c6a64;
+    --muted-soft: #8e8b82;
+    --on-dark: #faf9f5;
+    --on-dark-soft: #a09d96;
+    --hairline: #e6dfd8;
+    --on-primary: #ffffff;
+    --success: #5db872;
+    --sidebar-w: 224px;
+
+    --display: "Microsoft YaHei", "PingFang SC", "Segoe UI", system-ui, sans-serif;
+    --sans: "Segoe UI", -apple-system, system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+    --mono: "Cascadia Code", "JetBrains Mono", "Fira Code", Consolas, monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--canvas);
+    color: var(--body);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ============ SIDEBAR ============ */
+  .layout {
+    display: flex;
+    min-height: 100vh;
+  }
+  .sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    background: var(--dark);
+    overflow-y: auto;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    scrollbar-width: thin;
+    scrollbar-color: #3a3835 transparent;
+  }
+  .sidebar-brand {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid #2a2825;
+  }
+  .sidebar-brand-name {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--on-dark);
+    letter-spacing: -0.3px;
+  }
+  .sidebar-brand-sub {
+    font-size: 12px;
+    color: var(--on-dark-soft);
+    margin-top: 4px;
+  }
+  .sidebar-nav {
+    padding: 16px 12px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .sidebar-nav a {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 14px;
+    color: var(--on-dark-soft);
+    transition: all 0.15s;
+    line-height: 1.3;
+  }
+  .sidebar-nav a:hover {
+    background: var(--dark-elevated);
+    color: var(--on-dark);
+  }
+  .sidebar-nav a.active {
+    background: rgba(204,120,92,0.12);
+    color: var(--coral);
+  }
+  .sidebar-nav .nav-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--on-dark-soft);
+    opacity: 0.5;
+    width: 14px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .sidebar-nav a.active .nav-num {
+    color: var(--coral);
+    opacity: 0.7;
+  }
+
+  /* ============ MAIN AREA ============ */
+  .main {
+    flex: 1;
+    margin-left: var(--sidebar-w);
+    min-width: 0;
+  }
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 32px;
+  }
+
+  /* ============ HERO ============ */
+  .hero {
+    padding: 80px 0 64px;
+  }
+  .hero-eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--coral);
+    margin-bottom: 16px;
+  }
+  .hero h1 {
+    font-family: var(--display);
+    font-size: clamp(30px, 4vw, 44px);
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.5px;
+    color: var(--ink);
+    text-wrap: balance;
+    margin-bottom: 16px;
+  }
+  .hero .lead {
+    font-size: 17px;
+    line-height: 1.7;
+    color: var(--body-strong);
+    max-width: 560px;
+  }
+
+  /* ============ PHASE SECTION ============ */
+  .phase {
+    padding: 72px 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .phase:last-of-type { border-bottom: none; }
+  .phase-header { margin-bottom: 40px; }
+  .phase-number {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--coral);
+    margin-bottom: 8px;
+  }
+  .phase-title {
+    font-family: var(--display);
+    font-size: clamp(24px, 3vw, 34px);
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.3px;
+    color: var(--ink);
+    margin-bottom: 10px;
+  }
+  .phase-subtitle {
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--body);
+    max-width: 600px;
+  }
+
+  /* ============ PROGRESS BAR ============ */
+  .progress-track {
+    display: flex;
+    gap: 4px;
+    margin: 28px 0;
+  }
+  .progress-segment { height: 4px; border-radius: 2px; flex: 1; }
+  .progress-segment.done { background: var(--coral); }
+  .progress-segment.current { background: var(--amber); }
+  .progress-segment.todo { background: var(--hairline); }
+
+  /* ============ PRINCIPLE BOX ============ */
+  .principle {
+    background: var(--dark);
+    border-radius: 12px;
+    padding: 28px;
+    margin: 28px 0;
+  }
+  .principle-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--coral);
+    margin-bottom: 10px;
+  }
+  .principle-text {
+    font-family: var(--display);
+    font-size: 19px;
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--on-dark);
+  }
+
+  /* ============ INSIGHT ============ */
+  .insight {
+    border-left: 3px solid var(--coral);
+    padding: 14px 20px;
+    margin: 24px 0;
+    background: rgba(204,120,92,0.04);
+    border-radius: 0 8px 8px 0;
+  }
+  .insight-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--coral);
+    margin-bottom: 4px;
+  }
+  .insight p { color: var(--body-strong); }
+
+  /* ============ CODE BLOCK ============ */
+  .code-block {
+    background: var(--dark);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 24px 0;
+  }
+  .code-block-bar {
+    background: var(--dark-elevated);
+    padding: 8px 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--on-dark-soft);
+    border-bottom: 1px solid #3a3835;
+  }
+  .code-block pre {
+    padding: 18px 20px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--on-dark-soft);
+  }
+  .code-block .kw { color: #c4a7e7; }
+  .code-block .fn { color: #eb9b68; }
+  .code-block .str { color: #a3d9a5; }
+  .code-block .cm { color: #6c6a64; }
+  .code-block .cls { color: #82aaff; }
+  .code-block .tp { color: #89ddff; }
+  .code-block .num { color: #f78c6c; }
+
+  /* ============ WHY BOX ============ */
+  .why-box {
+    background: var(--card);
+    border-radius: 10px;
+    padding: 24px;
+    margin: 24px 0;
+  }
+  .why-box h4 { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+  .why-box p, .why-box li { color: var(--body); font-size: 15px; line-height: 1.6; }
+  .why-box ul { padding-left: 20px; margin-top: 8px; }
+  .why-box li { margin-bottom: 4px; }
+
+  /* ============ FILE REF ============ */
+  .file-ref {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--coral);
+    background: rgba(204,120,92,0.08);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  /* ============ PROSE ============ */
+  .prose h3 {
+    font-family: var(--display);
+    font-size: 21px;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 36px 0 10px;
+  }
+  .prose h3:first-child { margin-top: 0; }
+  .prose p { margin-bottom: 14px; max-width: 680px; }
+  .prose code {
+    font-family: var(--mono);
+    font-size: 14px;
+    background: var(--card);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--coral-active);
+  }
+  .prose strong { color: var(--ink); font-weight: 600; }
+  .prose ul, .prose ol { padding-left: 20px; margin-bottom: 14px; }
+  .prose li { margin-bottom: 5px; }
+
+  /* ============ DIAGRAM ============ */
+  .diagram {
+    background: var(--dark);
+    border-radius: 10px;
+    padding: 24px;
+    margin: 24px 0;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--on-dark-soft);
+    overflow-x: auto;
+    white-space: pre;
+    line-height: 1.8;
+  }
+  .diagram .hl { color: var(--coral); }
+  .diagram .tl { color: var(--teal); }
+  .diagram .am { color: var(--amber); }
+  .diagram .dim { opacity: 0.4; }
+
+  /* ============ DECISION CARDS ============ */
+  .decision-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin: 20px 0;
+  }
+  .decision-card {
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 18px;
+  }
+  .decision-card.chosen { border-color: var(--coral); background: rgba(204,120,92,0.04); }
+  .decision-card h5 { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+  .decision-card p { font-size: 14px; color: var(--muted); line-height: 1.5; }
+  .decision-card .chosen-badge { font-size: 11px; font-weight: 600; color: var(--coral); margin-top: 8px; }
+
+  /* ============ CORAL BAND ============ */
+  .band-coral {
+    background: var(--coral);
+    padding: 56px 0;
+    text-align: center;
+    color: var(--on-primary);
+  }
+  .band-coral h2 {
+    font-family: var(--display);
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--on-primary);
+    margin-bottom: 10px;
+  }
+  .band-coral p { color: rgba(255,255,255,0.85); max-width: 520px; margin: 0 auto; }
+
+  /* ============ FOOTER ============ */
+  .footer {
+    background: var(--dark);
+    padding: 36px 0;
+  }
+  .footer-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: var(--on-dark-soft);
+  }
+  .footer-brand {
+    font-family: var(--display);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--on-dark);
+  }
+
+  /* ============ MOBILE NAV TOGGLE ============ */
+  .mobile-nav-toggle {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 300;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--dark);
+    border: 1px solid #3a3835;
+    color: var(--on-dark);
+    font-size: 20px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 1024px) {
+    .sidebar {
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+    }
+    .sidebar.open {
+      transform: translateX(0);
+    }
+    .sidebar-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 199;
+    }
+    .sidebar-backdrop.open { display: block; }
+    .main { margin-left: 0; }
+    .mobile-nav-toggle { display: flex; }
+    .container { padding: 0 20px; }
+  }
+  @media (max-width: 768px) {
+    .phase { padding: 48px 0; }
+    .hero { padding: 56px 0 40px; }
+    .decision-grid { grid-template-columns: 1fr; }
+    .principle { padding: 20px; }
+    .principle-text { font-size: 17px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ====== SIDEBAR ====== -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-name">nanobot</div>
+      <div class="sidebar-brand-sub">构建 Agent 项目 Roadmap</div>
+    </div>
+    <div class="sidebar-nav">
+      <a href="#phase-0"><span class="nav-num">0</span>第一性原理</a>
+      <a href="#phase-1"><span class="nav-num">1</span>最小 Agent 循环</a>
+      <a href="#phase-2"><span class="nav-num">2</span>工具系统</a>
+      <a href="#phase-3"><span class="nav-num">3</span>Provider 抽象</a>
+      <a href="#phase-4"><span class="nav-num">4</span>记忆与会话</a>
+      <a href="#phase-5"><span class="nav-num">5</span>消息总线与渠道</a>
+      <a href="#phase-6"><span class="nav-num">6</span>上下文构建</a>
+      <a href="#phase-7"><span class="nav-num">7</span>WebUI</a>
+      <a href="#phase-8"><span class="nav-num">8</span>生产化</a>
+      <a href="#summary" style="margin-top:auto;border-top:1px solid #2a2825;padding-top:14px"><span class="nav-num">&bull;</span>全景回顾</a>
+    </div>
+  </nav>
+  <div class="sidebar-backdrop" id="backdrop"></div>
+
+  <!-- ====== MAIN ====== -->
+  <div class="main">
+
+    <!-- HERO -->
+    <section class="hero">
+      <div class="container">
+        <div class="hero-eyebrow">Roadmap</div>
+        <h1>从零到一百，构建一个 Agent 项目</h1>
+        <p class="lead">以 nanobot 源码为蓝本，模拟作者视角，用第一性原理一步步理解：Agent 是什么，为什么这样设计，如何从一个 50 行脚本长成一个完整框架。</p>
+      </div>
+    </section>
+
+    <!-- PHASE 0 -->
+    <section class="phase" id="phase-0">
+      <div class="container">
+        <div class="phase-header">
+          <div class="phase-number">Phase 0</div>
+          <h2 class="phase-title">第一性原理：Agent 到底是什么</h2>
+          <p class="phase-subtitle">在写任何代码之前，先搞清楚一个根本问题。</p>
+        </div>
+        <div class="progress-track">
+          <div class="progress-segment current"></div>
+          <div class="progress-segment todo"></div>
+          <div class="progress-segment todo"></div>
+          <div class="progress-segment todo"></div>
+          <div class="progress-segment todo"></div>
+          <div class="progress-segment todo"></div>
+          <div class="progress-segment todo"></div>
+          <div class="progress-segment todo"></div>
+          <div class="progress-segment todo"></div>
+        </div>
+        <div class="prose">
+          <p>传统程序的逻辑是<strong>你写死的</strong>——if/else、switch/case，每一步做什么由程序员决定。用户输入 A，走分支 A；输入 B，走分支 B。程序永远不会"想"出你没写过的分支。</p>
+          <div class="principle">
+            <div class="principle-label">第一性原理</div>
+            <div class="principle-text">Agent = 一个程序，它用 LLM 来决定自己的下一步动作，而不是靠硬编码的逻辑。</div>
+          </div>
+          <p>这一个定义就够了。从这句话出发，所有的设计决策都会自然浮现：</p>
+          <h3>三个最小组成部分</h3>
+          <p><strong>1. LLM（大脑）</strong>——理解输入，决定下一步做什么。它不执行，只决策。</p>
+          <p><strong>2. Tools（手脚）</strong>——LLM 能调用的能力：读文件、跑命令、搜网页。没有 Tools 的 LLM 只能说话，不能做事。</p>
+          <p><strong>3. Loop（循环）</strong>——把 LLM 和 Tools 串起来的控制结构。发消息 → LLM 思考 → 要么给出最终回复，要么请求调用某个工具 → 执行工具 → 把结果反馈给 LLM → 再次思考 → 循环，直到 LLM 认为任务完成。</p>
+          <div class="diagram"><span class="dim">┌───────────────────────────────────────────────┐</span>
+<span class="dim">│</span>                  <span class="hl">Agent Loop</span>                    <span class="dim">│</span>
+<span class="dim">│</span>                                               <span class="dim">│</span>
+<span class="dim">│</span>   用户消息 ──→ <span class="am">LLM</span> ──→ 最终回复？──→ 返回     <span class="dim">│</span>
+<span class="dim">│</span>                 <span class="dim">│</span>             <span class="dim">↑</span>                <span class="dim">│</span>
+<span class="dim">│</span>                 <span class="dim">│ tool_call</span>   <span class="dim">│ 工具结果</span>       <span class="dim">│</span>
+<span class="dim">│</span>                 <span class="dim">↓</span>             <span class="dim">│</span>                <span class="dim">│</span>
+<span class="dim">│</span>               <span class="tl">Tool</span> ──────────┘                <span class="dim">│</span>
+<span class="dim">│</span>                                               <span class="dim">│</span>
+<span class="dim">└───────────────────────────────────────────────┘</span></div>
+          <div class="insight">
+            <div class="insight-label">为什么这个区分重要？</div>
+            <p>一个 chatbot（聊天机器人）只有 LLM，没有 Tools 和 Loop——它只能回答问题，不能采取行动。Agent 的本质是<strong>能行动</strong>，而且<strong>自主决定</strong>采取什么行动。这就是为什么 nanobot 的核心只有两个文件：<code>loop.py</code>（循环）和 <code>runner.py</code>（执行引擎），而不是一个巨大的路由表。</p>
+          </div>
+          <h3>一个思想实验</h3>
+          <p>假设你让一个 Agent "帮我把这个 Python 项目的所有 print 改成 logging"。Agent 不需要你告诉它每个文件在哪——它会：</p>
+          <ol>
+            <li>调用文件搜索工具，找到所有 .py 文件</li>
+            <li>逐个读取文件内容</li>
+            <li>判断哪些文件有 print 语句</li>
+            <li>调用文件编辑工具替换</li>
+            <li>跑一下测试确认没改坏</li>
+          </ol>
+          <p>每一步做什么，是 LLM <strong>在运行时动态决定的</strong>，不是程序员预先写好的。这就是 Agent 和传统 CLI 工具的根本区别。</p>
+          <div class="why-box">
+            <h4>nanobot 为什么叫 "nano"？</h4>
+            <p>因为核心理念就是<strong>最小化</strong>——Agent Loop 本身应该尽可能小、尽可能简单。复杂性不在循环本身，而在循环外面挂载的能力（Tools）和连接的外部世界（Channels）。框架的职责是做好这个循环和插件机制，不应该替 LLM 做决策。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PHASE 1 -->
+    <section class="phase" id="phase-1">
+      <div class="container">
+        <div class="phase-header">
+          <div class="phase-number">Phase 1</div>
+          <h2 class="phase-title">最小 Agent 循环</h2>
+          <p class="phase-subtitle">50 行代码，一个能调用工具的 Agent 就跑起来了。这是一切的起点。</p>
+        </div>
+        <div class="progress-track"><div class="progress-segment done"></div><div class="progress-segment current"></div><div class="progress-segment todo"></div><div class="progress-segment todo"></div><div class="progress-segment todo"></div><div class="progress-segment todo"></div><div class="progress-segment todo"></div><div class="progress-segment todo"></div><div class="progress-segment todo"></div></div>
+        <div class="prose">
+          <p>不要从框架开始。从一个<strong>能跑的最小脚本</strong>开始。</p>
+          <div class="code-block">
+            <div class="code-block-bar">minimal_agent.py — 整个 Agent 的原型</div>
+            <pre><span class="kw">import</span> openai
+
+client = openai.<span class="cls">OpenAI</span>()
+
+<span class="cm"># 定义一个工具：读取文件</span>
+tools = [{
+    <span class="str">"type"</span>: <span class="str">"function"</span>,
+    <span class="str">"function"</span>: {
+        <span class="str">"name"</span>: <span class="str">"read_file"</span>,
+        <span class="str">"parameters"</span>: {<span class="str">"type"</span>: <span class="str">"object"</span>, <span class="str">"properties"</span>: {
+            <span class="str">"path"</span>: {<span class="str">"type"</span>: <span class="str">"string"</span>}
+        }}
+    }
+}]
+
+<span class="kw">def</span> <span class="fn">execute_tool</span>(name, args):
+    <span class="kw">if</span> name == <span class="str">"read_file"</span>:
+        <span class="kw">return</span> <span class="fn">open</span>(args[<span class="str">"path"</span>]).<span class="fn">read</span>()
+
+messages = [{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">"读一下 main.py 的内容"</span>}]
+
+<span class="cm"># <span class="hl">这就是 Agent Loop —— 整个框架的心脏</span></span>
+<span class="kw">while True</span>:
+    response = client.chat.completions.<span class="fn">create</span>(
+        model=<span class="str">"gpt-4o"</span>, messages=messages, tools=tools
+    )
+    msg = response.choices[<span class="num">0</span>].message
+
+    <span class="cm"># 没有 tool_call → LLM 认为任务完成，返回最终回复</span>
+    <span class="kw">if not</span> msg.tool_calls:
+        <span class="fn">print</span>(msg.content)
+        <span class="kw">break</span>
+
+    <span class="cm"># 有 tool_call → 执行工具，把结果喂回去</span>
+    messages.<span class="fn">append</span>(msg)
+    <span class="kw">for</span> call <span class="kw">in</span> msg.tool_calls:
+        result = <span class="fn">execute_tool</span>(call.function.name, call.function.arguments)
+        messages.<span class="fn">append</span>({
+            <span class="str">"role"</span>: <span class="str">"tool"</span>,
+            <span class="str">"tool_call_id"</span>: call.id,
+            <span class="str">"content"</span>: result
+        })</pre>
+          </div>
+          <div class="principle">
+            <div class="principle-label">核心认知</div>
+            <div class="principle-text">这 50 行代码就是一个完整的 Agent。nanobot 的 runner.py 有 600+ 行，但核心逻辑和这个一模一样——多出来的全是错误处理、流式输出、重试、上下文治理。骨架没变。</div>
+          </div>
+          <h3>对应 nanobot 源码</h3>
+          <p>这个最小循环在 nanobot 里被拆成两层：</p>
+          <ul>
+            <li><span class="file-ref">agent/runner.py</span> — <code>AgentRunner</code> 类，纯粹的 "LLM 对话 + 工具执行" 循环。不关心消息从哪来、回复往哪发。</li>
+            <li><span class="file-ref">agent/loop.py</span> — <code>AgentLoop</code> 类，在 Runner 外面包了一层：管理会话、构建上下文、处理 Hook。</li>
+          </ul>
+          <div class="why-box">
+            <h4>为什么拆成 Loop + Runner 两层？</h4>
+            <p>因为<strong>关注点分离</strong>。Runner 只管 "和 LLM 对话 + 执行工具"，它不知道消息来自 Telegram 还是 WebUI，也不管会话历史怎么存。Loop 负责这些"产品层"的事情。这样 Runner 可以被单独复用——比如子 Agent（subagent）直接调用 Runner，不需要再走一遍 Loop 的全部流程。</p>
+          </div>
+          <h3>这个阶段你学到什么</h3>
+          <ol>
+            <li><code>while True</code> 循环是 Agent 的心脏</li>
+            <li>LLM 的 tool_call 机制是 Agent 能"行动"的根本</li>
+            <li>循环的退出条件：LLM 返回纯文本（没有 tool_call）= 它认为任务完成了</li>
+            <li>所有后续的架构都是在这个骨架上"长"出来的</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- PHASE 2 -->
+    <section class="phase" id="phase-2">
+      <div class="container">
+        <div class="phase-header">
+          <div class="phase-number">Phase 2</div>
+          <h2 class="phase-title">工具系统</h2>
+          <p class="phase-subtitle">从 if/else 硬编码到可插拔的注册表——Agent 的能力如何扩展。</p>
+        </div>
+        <div class="progress-track"><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment current"></div><div class="progress-segment todo"></div><div class="progress-segment todo"></div><div class="progress-segment todo"></div><div class="progress-segment todo"></div><div class="progress-segment todo"></div><div class="progress-segment todo"></div></div>
+        <div class="prose">
+          <p>Phase 1 的 <code>execute_tool</code> 用 if/else 硬编码了工具。加一个工具就要改这个函数。三个工具还行，三十个就崩了。</p>
+          <div class="principle">
+            <div class="principle-label">设计原则</div>
+            <div class="principle-text">工具应该是可插拔的。加一个工具 = 写一个文件放进目录，框架自动发现并注册。不需要改任何已有代码。</div>
+          </div>
+          <h3>三层抽象</h3>
+          <p><strong>Tool 基类</strong> <span class="file-ref">agent/tools/base.py</span> ——每个工具继承它，声明自己的名字、描述、参数 JSON Schema，实现一个 <code>execute</code> 方法。</p>
+          <p><strong>ToolRegistry</strong> <span class="file-ref">agent/tools/registry.py</span> ——一个字典，key 是工具名，value 是 Tool 实例。Runner 调用 <code>registry.execute(name, args)</code>，不关心具体是哪个工具。</p>
+          <p><strong>Auto-discovery</strong> <span class="file-ref">agent/tools/loader.py</span> ——启动时用 <code>pkgutil</code> 扫描 <code>tools/</code> 目录下的所有模块，自动实例化并注册。</p>
+          <div class="code-block">
+            <div class="code-block-bar">一个典型的 Tool 长什么样</div>
+            <pre><span class="kw">class</span> <span class="cls">ReadFileTool</span>(<span class="cls">Tool</span>):
+    name = <span class="str">"read_file"</span>
+    description = <span class="str">"读取文件内容"</span>
+
+    <span class="kw">def</span> <span class="fn">parameters</span>(self):
+        <span class="kw">return</span> {
+            <span class="str">"path"</span>: Param(type=<span class="str">"string"</span>, required=<span class="cls">True</span>)
+        }
+
+    <span class="kw">async def</span> <span class="fn">execute</span>(self, path: <span class="tp">str</span>) -> <span class="tp">str</span>:
+        <span class="kw">return</span> Path(path).<span class="fn">read_text</span>()</pre>
+          </div>
+          <div class="why-box">
+            <h4>为什么用 JSON Schema 描述参数？</h4>
+            <p>因为 LLM 的 tool_call 协议就是 JSON Schema。LLM 需要知道：这个工具叫什么、接受什么参数、每个参数是什么类型。你用 JSON Schema 描述，框架自动转换成 LLM 能理解的工具定义，同时也能自动校验 LLM 返回的参数是否合法。一份 Schema，两个用途。</p>
+          </div>
+          <h3>nanobot 内置了哪些工具</h3>
+          <p>都在 <span class="file-ref">agent/tools/</span> 目录下，每个文件一类工具：</p>
+          <ul>
+            <li><code>filesystem.py</code> — 文件读写编辑</li>
+            <li><code>shell.py</code> — Shell 命令执行（带沙盒）</li>
+            <li><code>web.py</code> — 搜索和网页抓取</li>
+            <li><code>search.py</code> — 代码搜索（grep/glob）</li>
+            <li><code>mcp.py</code> — MCP Server 协议</li>
+            <li><code>spawn.py</code> — 子 Agent 生成</li>
+            <li><code>cron.py</code> — 定时任务</li>
+            <li><code>long_task.py</code> — 持续目标追踪</li>
+          </ul>
+          <div class="insight">
+            <div class="insight-label">插件机制的威力</div>
+            <p>想给 Agent 加一个"发邮件"的能力？写一个 <code>email.py</code>，继承 Tool，放进 <code>tools/</code> 目录。重启后 Agent 就自动拥有了发邮件的能力——LLM 会在需要时自己调用它。你不需要在任何地方写 "如果用户说发邮件就调用 send_email"。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PHASE 3 -->
+    <section class="phase" id="phase-3">
+      <div class="container">
+        <div class="phase-header">
+          <div class="phase-number">Phase 3</div>
+          <h2 class="phase-title">Provider 抽象</h2>
+          <p class="phase-subtitle">不要绑死一个 LLM——今天用 GPT-4，明天可能用 Claude，后天可能用本地模型。</p>
+        </div>
+        <div class="progress-track"><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment current"></div><div class="progress-segment todo"></div><div class="progress-segment todo"></div><div class="progress-segment todo"></div><div class="progress-segment todo"></div><div class="progress-segment todo"></div></div>
+        <div class="prose">
+          <p>Phase 1 里硬编码了 <code>openai.ChatCompletion</code>。但不同 LLM 的 API 格式不同、认证方式不同、流式输出方式不同。</p>
+          <div class="principle">
+            <div class="principle-label">设计原则</div>
+            <div class="principle-text">Runner 不应该知道自己在跟哪个 LLM 说话。它只调用 provider.send_message(messages)，返回一个统一的 LLMResponse。</div>
+          </div>
+          <h3>三件事</h3>
+          <p><strong>LLMProvider 基类</strong> <span class="file-ref">providers/base.py</span> ——定义接口：<code>send_message(messages) → LLMResponse</code>。LLMResponse 包含 <code>content</code>（文本回复）和 <code>tool_calls</code>（工具调用请求）。</p>
+          <p><strong>具体 Provider</strong> ——每个 LLM 一个实现：Anthropic、OpenAI Compatible、Azure、Bedrock 等。各自处理自己的 API 差异。</p>
+          <p><strong>Factory + Registry</strong> <span class="file-ref">providers/factory.py</span> ——根据模型名（如 <code>claude-sonnet-4-20250514</code>）自动找到对应的 Provider 并实例化。</p>
+          <div class="decision-grid">
+            <div class="decision-card chosen">
+              <h5>nanobot 的选择：统一接口 + 自动路由</h5>
+              <p>用户在 config 里写模型名，框架自动选 Provider。切换模型 = 改一行配置。</p>
+              <div class="chosen-badge">nanobot 采用的方案</div>
+            </div>
+            <div class="decision-card">
+              <h5>另一种方案：LiteLLM 代理</h5>
+              <p>用第三方库统一所有 LLM API。优点是省事，缺点是多一层依赖、调试困难、流式处理受限。</p>
+            </div>
+          </div>
+          <div class="why-box">
+            <h4>为什么 nanobot 自己实现而不用 LiteLLM？</h4>
+            <p>因为 Agent 框架对 LLM 交互有更精细的需求——流式输出、tool_call 解析、重试策略、thinking/reasoning 提取、provider-specific 字段传递。这些在一个通用代理层里很难控制。自己实现虽然代码多一些，但完全掌控每个细节。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PHASE 4 -->
+    <section class="phase" id="phase-4">
+      <div class="container">
+        <div class="phase-header">
+          <div class="phase-number">Phase 4</div>
+          <h2 class="phase-title">记忆与会话</h2>
+          <p class="phase-subtitle">没有记忆的 Agent 像金鱼——每次对话都是全新的。这一步让它有了持续的"自我"。</p>
+        </div>
+        <div class="progress-track"><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment current"></div><div class="progress-segment todo"></div><div class="progress-segment todo"></div><div class="progress-segment todo"></div><div class="progress-segment todo"></div></div>
+        <div class="prose">
+          <p>Phase 1 的脚本每次运行都从零开始。上一次对话说了什么、做了什么，全部丢失。这对一个"助手"来说是不可接受的。</p>
+          <div class="principle">
+            <div class="principle-label">第一性原理</div>
+            <div class="principle-text">LLM 的上下文窗口是有限的（比如 128K tokens）。但用户的对话历史可能有几万轮。所以记忆系统的核心问题是：如何在有限窗口里放入最有价值的历史信息。</div>
+          </div>
+          <h3>两层记忆</h3>
+          <p><strong>Session（短期记忆）</strong> <span class="file-ref">session/manager.py</span></p>
+          <ul>
+            <li>每个会话的完整历史存成 JSONL 文件（追加写入，原子操作 + fsync）</li>
+            <li>重放时截取最近 N 条消息（根据模型上下文窗口动态计算）</li>
+            <li>当上下文过长时，<strong>自动压缩</strong>（AutoCompact）——让 LLM 自己总结之前的对话，用摘要替代原文</li>
+          </ul>
+          <p><strong>Memory（长期记忆）</strong> <span class="file-ref">agent/memory.py</span></p>
+          <ul>
+            <li><code>SOUL.md</code> — Agent 的"人格"和行为指南</li>
+            <li><code>USER.md</code> — 关于用户的信息（偏好、角色、习惯）</li>
+            <li><code>MEMORY.md</code> — 跨会话的事实记录</li>
+            <li><strong>Dream 整合</strong>——定期用 LLM 回顾近期对话，提取值得记住的信息写入上述文件</li>
+          </ul>
+          <div class="diagram"><span class="hl">Session (短期)</span>                    <span class="tl">Memory (长期)</span>
+<span class="dim">─────────────────</span>                    <span class="dim">──────────────────</span>
+对话历史 (JSONL)                    SOUL.md (人格)
+  ↓ 太长时                          USER.md (用户画像)
+AutoCompact (LLM总结)               MEMORY.md (事实)
+  ↓                                    ↑
+截取最近N条 → 放入上下文            Dream (定期整合)
+                                       ↑
+                                  回顾近期对话历史</div>
+          <div class="why-box">
+            <h4>为什么要 Dream 机制？</h4>
+            <p>人类在睡眠中整合白天的记忆——这就是 Dream 的类比。Agent 不能每次对话都把所有历史塞进上下文（窗口不够），但又需要记住重要的事情（用户的偏好、项目的约定）。Dream 让 LLM 自己决定什么值得长期记忆，什么可以遗忘。</p>
+          </div>
+          <div class="insight">
+            <div class="insight-label">AutoCompact 的精妙之处</div>
+            <p>当对话太长快撑爆上下文窗口时，让 LLM 自己总结之前的对话，然后用摘要替代原始消息。这相当于"你还记得我们之前聊了什么吗？"——LLM 说"记得，我们讨论了 X、Y、Z"，然后丢掉原始的几百条消息。记忆质量靠 LLM 的理解能力保证。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PHASE 5 -->
+    <section class="phase" id="phase-5">
+      <div class="container">
+        <div class="phase-header">
+          <div class="phase-number">Phase 5</div>
+          <h2 class="phase-title">消息总线与渠道</h2>
+          <p class="phase-subtitle">Agent 不应该知道用户从哪来——Telegram、Discord 还是网页，都是"一条消息"。</p>
+        </div>
+        <div class="progress-track"><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment current"></div><div class="progress-segment todo"></div><div class="progress-segment todo"></div><div class="progress-segment todo"></div></div>
+        <div class="prose">
+          <p>到 Phase 4 为止，你有了一个能记住上下文、调用工具的 Agent。但它只能通过命令行交互。用户想从 Telegram 给它发消息怎么办？</p>
+          <div class="principle">
+            <div class="principle-label">设计原则</div>
+            <div class="principle-text">用一个异步消息队列（MessageBus）把"消息从哪来"和"消息怎么处理"完全解耦。Agent 核心只消费 InboundMessage，不关心它来自哪个平台。</div>
+          </div>
+          <h3>MessageBus</h3>
+          <p><span class="file-ref">bus/queue.py</span> 只有 45 行代码——两个 <code>asyncio.Queue</code>，一个入站一个出站。这是整个系统最简单也最关键的组件。</p>
+          <div class="code-block">
+            <div class="code-block-bar">bus/queue.py — 整个 MessageBus 就这么多</div>
+            <pre><span class="kw">class</span> <span class="cls">MessageBus</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self):
+        self.inbound: asyncio.Queue[<span class="cls">InboundMessage</span>] = asyncio.<span class="fn">Queue</span>()
+        self.outbound: asyncio.Queue[<span class="cls">OutboundMessage</span>] = asyncio.<span class="fn">Queue</span>()
+
+    <span class="kw">async def</span> <span class="fn">publish_inbound</span>(self, msg):   <span class="cm"># Channel → Bus</span>
+        <span class="kw">await</span> self.inbound.<span class="fn">put</span>(msg)
+
+    <span class="kw">async def</span> <span class="fn">consume_inbound</span>(self):       <span class="cm"># Bus → AgentLoop</span>
+        <span class="kw">return await</span> self.inbound.<span class="fn">get</span>()
+
+    <span class="kw">async def</span> <span class="fn">publish_outbound</span>(self, msg):  <span class="cm"># AgentLoop → Bus</span>
+        <span class="kw">await</span> self.outbound.<span class="fn">put</span>(msg)
+
+    <span class="kw">async def</span> <span class="fn">consume_outbound</span>(self):      <span class="cm"># Bus → Channel</span>
+        <span class="kw">return await</span> self.outbound.<span class="fn">get</span>()</pre>
+          </div>
+          <h3>Channel 抽象</h3>
+          <p><span class="file-ref">channels/base.py</span> 定义了 <code>BaseChannel</code>：监听外部平台、把平台消息转成统一的 <code>InboundMessage</code>、把 <code>OutboundMessage</code> 转回平台格式发出去。</p>
+          <p>和 Tools 一样，Channels 也通过 <code>pkgutil</code> 自动发现。加一个新平台 = 写一个继承 <code>BaseChannel</code> 的文件。</p>
+          <div class="why-box">
+            <h4>为什么用消息队列而不是直接调用？</h4>
+            <ul>
+              <li><strong>解耦</strong>——Channel 和 AgentLoop 互不知道对方存在，通过 Bus 间接通信</li>
+              <li><strong>多渠道并发</strong>——15 个 Channel 同时运行，消息全部进同一个队列，AgentLoop 串行消费</li>
+              <li><strong>背压控制</strong>——如果 Agent 处理慢，消息在队列里排队，不会丢失也不会压垮 Agent</li>
+              <li><strong>测试友好</strong>——测试时不需要启动真实的 Telegram bot，直接往 Bus 里塞消息就行</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PHASE 6 -->
+    <section class="phase" id="phase-6">
+      <div class="container">
+        <div class="phase-header">
+          <div class="phase-number">Phase 6</div>
+          <h2 class="phase-title">上下文构建</h2>
+          <p class="phase-subtitle">你喂给 LLM 的 system prompt 决定了 Agent 的"人格"和能力边界。这是最容易被低估的部分。</p>
+        </div>
+        <div class="progress-track"><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment current"></div><div class="progress-segment todo"></div><div class="progress-segment todo"></div></div>
+        <div class="prose">
+          <div class="principle">
+            <div class="principle-label">核心认知</div>
+            <div class="principle-text">Agent 的行为不是由代码决定的，而是由 prompt 决定的。代码只是执行引擎，prompt 才是 Agent 的灵魂。</div>
+          </div>
+          <p>每次 Agent 处理一条消息时，<code>ContextBuilder</code> <span class="file-ref">agent/context.py</span> 组装完整的上下文：</p>
+          <div class="diagram"><span class="hl">System Prompt 组装顺序</span>
+<span class="dim">─────────────────────────</span>
+<span class="num">1.</span> <span class="am">SOUL.md</span>        → Agent 的人格、行为准则
+<span class="num">2.</span> <span class="am">USER.md</span>        → 当前用户的画像
+<span class="num">3.</span> <span class="am">MEMORY.md</span>      → 长期记忆条目
+<span class="num">4.</span> <span class="tl">Skills</span>         → 已加载的 Skill 描述
+<span class="num">5.</span> <span class="tl">Tool 定义</span>      → 所有可用工具的 JSON Schema
+<span class="num">6.</span> <span class="tl">Runtime 上下文</span>  → 当前时间、工作目录、平台信息
+<span class="num">7.</span> <span class="hl">对话历史</span>       → 最近 N 轮（经过压缩/截断）</div>
+          <p>这就像你给一个新员工的入职手册：你是谁、用户是谁、你记得什么、你会什么技能、你手上有哪些工具、现在是几点。有了这些信息，LLM 才能做出恰当的判断。</p>
+          <div class="why-box">
+            <h4>为什么 SOUL.md 和 USER.md 是 Markdown 文件而不是代码？</h4>
+            <p>因为<strong>非技术用户也需要能修改 Agent 的行为</strong>。改一行 Markdown 就能让 Agent "从今天起用中文回复"或"不要主动推荐其他工具"——不需要懂 Python，不需要重启服务。这也是为什么记忆系统用文件而不是数据库——人类可读、可编辑、可 git 版本控制。</p>
+          </div>
+          <div class="insight">
+            <div class="insight-label">Skills 系统</div>
+            <p>Skills <span class="file-ref">agent/skills.py</span> 是"可选的能力包"。不像 Tools 是给 LLM 调用的函数，Skills 是一段提示词——它告诉 LLM 在特定场景下应该怎么做。比如一个 "github" skill 会教 Agent 如何正确创建 PR。Skills 通过目录扫描自动加载，和 Tools/Channels 一样的插件机制。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PHASE 7 -->
+    <section class="phase" id="phase-7">
+      <div class="container">
+        <div class="phase-header">
+          <div class="phase-number">Phase 7</div>
+          <h2 class="phase-title">WebUI</h2>
+          <p class="phase-subtitle">给 Agent 一张脸——浏览器里的聊天界面。</p>
+        </div>
+        <div class="progress-track"><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment current"></div><div class="progress-segment todo"></div></div>
+        <div class="prose">
+          <p>到这一步，Agent 已经能通过 Telegram、Discord 等渠道工作了。但你还需要一个<strong>自己的</strong>界面——不依赖第三方平台、能展示富文本和代码、能管理设置。</p>
+          <h3>技术选型</h3>
+          <div class="decision-grid">
+            <div class="decision-card chosen">
+              <h5>Vite + React SPA</h5>
+              <p>纯前端应用，通过 WebSocket 与后端通信。构建产物直接打进 Python 包。</p>
+              <div class="chosen-badge">nanobot 采用的方案</div>
+            </div>
+            <div class="decision-card">
+              <h5>Next.js 全栈</h5>
+              <p>前后端一体。但 nanobot 后端是 Python，不需要 Node.js 的 SSR 能力。</p>
+            </div>
+          </div>
+          <div class="why-box">
+            <h4>为什么选 Vite + React 而不是 Next.js？</h4>
+            <p>nanobot 的后端是 Python（aiohttp），不需要 Node.js 服务端。WebUI 只是一个<strong>纯客户端</strong>，通过 WebSocket 连接到 Python Gateway。Next.js 的 SSR、API Routes 这些服务端能力完全用不上，反而多引入一个 Node.js 运行时。Vite + React 是最轻量的组合——构建出来的 dist/ 是纯静态文件，直接由 Python 提供服务。</p>
+          </div>
+          <h3>WebSocket 多路复用</h3>
+          <p>Agent 生成回复时是流式的——一个字一个字吐出来。HTTP 做不了这个（请求-响应模型），所以用 WebSocket 建立长连接：</p>
+          <div class="diagram"><span class="am">浏览器 (React SPA)</span>
+    <span class="dim">↕</span> WebSocket 长连接
+<span class="tl">Gateway</span> (Python, 端口 8765)
+    <span class="dim">│</span>
+    <span class="dim">├──</span> 消息收发（聊天内容）
+    <span class="dim">├──</span> 流式输出（Agent 边想边发）
+    <span class="dim">├──</span> 工具执行进度（正在读文件...）
+    <span class="dim">└──</span> 会话管理（切换/创建/删除）</div>
+          <p>一个 WebSocket 连接承载多种消息类型——这就是"多路复用"。Gateway 在中间做路由：前端来的消息转发给 AgentLoop 的 MessageBus，AgentLoop 的输出流式推回前端。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- PHASE 8 -->
+    <section class="phase" id="phase-8">
+      <div class="container">
+        <div class="phase-header">
+          <div class="phase-number">Phase 8</div>
+          <h2 class="phase-title">生产化</h2>
+          <p class="phase-subtitle">从"能跑"到"能用"——配置、安全、API 兼容、子 Agent。</p>
+        </div>
+        <div class="progress-track"><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment done"></div><div class="progress-segment current"></div></div>
+        <div class="prose">
+          <h3>配置系统</h3>
+          <p><span class="file-ref">config/schema.py</span> 用 Pydantic 定义配置结构，从 <code>~/.nanobot/config.json</code> 加载。支持 camelCase 别名（JSON 友好）。这是框架的"控制面板"——用哪个模型、开哪些渠道、工具权限等等。</p>
+          <h3>安全</h3>
+          <p>Agent 能执行 Shell 命令、读写文件——这意味着它有<strong>真实的破坏力</strong>。</p>
+          <ul>
+            <li><strong>沙盒</strong> <span class="file-ref">agent/tools/sandbox.py</span> ——Shell 命令在受限环境中执行</li>
+            <li><strong>工作区范围</strong>——限制文件操作在指定目录内</li>
+            <li><strong>PTH 文件守卫</strong> <span class="file-ref">security/</span> ——防止代码注入</li>
+            <li><strong>Pairing 机制</strong>——DM 消息需要验证码才能交互，防止陌生人操控你的 Agent</li>
+          </ul>
+          <div class="insight">
+            <div class="insight-label">安全是 Agent 特有的问题</div>
+            <p>传统 Web 应用的安全是防止<strong>外部攻击</strong>（SQL 注入、XSS）。Agent 的安全问题是：你给了 LLM 真实的系统权限，而 LLM 可能被 prompt injection 操纵。所以安全边界不是"防黑客"，而是"限制 Agent 能做什么"——即使 LLM 被骗了，沙盒也能防止真正的损害。</p>
+          </div>
+          <h3>OpenAI 兼容 API</h3>
+          <p><span class="file-ref">api/server.py</span> 提供 <code>/v1/chat/completions</code> 和 <code>/v1/models</code> 端点，兼容 OpenAI API 格式。这意味着任何支持 OpenAI API 的工具（Cursor、Continue 等）都可以直接连接你的 Agent——它在外部看来就像一个自定义的 "模型"。</p>
+          <h3>子 Agent</h3>
+          <p><span class="file-ref">agent/subagent.py</span> + <span class="file-ref">agent/tools/spawn.py</span> ——Agent 可以生成子 Agent 来并行处理复杂任务。主 Agent 负责拆解和协调，子 Agent 各自独立执行。这是 Agent 从"单线程助手"进化为"团队协调者"的关键。</p>
+          <h3>定时任务</h3>
+          <p><span class="file-ref">agent/tools/cron.py</span> ——让 Agent 自己安排定时任务。"每天早上 9 点检查一下那个 API 的状态"——Agent 会创建一个 cron job，到点自动执行。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SUMMARY -->
+    <section class="band-coral" id="summary">
+      <div class="container">
+        <h2>全景回顾</h2>
+        <p>从 50 行脚本到完整框架，每一步都是对前一步自然出现的问题的回答。没有过度设计，只有"用到才加"的演进。</p>
+      </div>
+    </section>
+
+    <section class="phase" style="border-bottom:none">
+      <div class="container">
+        <div class="prose">
+          <h3>演进逻辑链</h3>
+          <div class="diagram"><span class="hl">Phase 0</span>  Agent = LLM + Tools + Loop
+   <span class="dim">↓ "我需要一个能跑的原型"</span>
+<span class="hl">Phase 1</span>  50 行 while True 循环
+   <span class="dim">↓ "工具写死在 if/else 里太丑了"</span>
+<span class="hl">Phase 2</span>  Tool 基类 + Registry + 自动发现
+   <span class="dim">↓ "不想绑死一个 LLM 提供商"</span>
+<span class="hl">Phase 3</span>  Provider 抽象 + Factory
+   <span class="dim">↓ "每次对话都忘记之前说过什么"</span>
+<span class="hl">Phase 4</span>  Session 持久化 + Memory + Dream
+   <span class="dim">↓ "想让多个平台的用户同时使用"</span>
+<span class="hl">Phase 5</span>  MessageBus + Channel 插件
+   <span class="dim">↓ "Agent 的行为应该由 prompt 控制，不是代码"</span>
+<span class="hl">Phase 6</span>  ContextBuilder + SOUL/USER/Skills
+   <span class="dim">↓ "需要一个自己的界面"</span>
+<span class="hl">Phase 7</span>  Vite + React + WebSocket Gateway
+   <span class="dim">↓ "要安全、可配置、可扩展"</span>
+<span class="hl">Phase 8</span>  Config + Security + API + Subagent</div>
+
+          <div class="principle">
+            <div class="principle-label">带走一句话</div>
+            <div class="principle-text">Agent 框架的本质是一个"最小循环 + 最大扩展性"的架构。循环本身永远是那个 while True——send → tool_call → execute → feed back。所有的工程复杂度都在循环外面：怎么插拔工具、怎么切换模型、怎么持久记忆、怎么连接多个平台。理解了循环，就理解了 Agent。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="container footer-inner">
+        <div class="footer-brand">nanobot Roadmap</div>
+        <div>从零到一百构建 Agent 项目</div>
+      </div>
+    </footer>
+
+  </div><!-- .main -->
+</div><!-- .layout -->
+
+<!-- Mobile nav toggle -->
+<button class="mobile-nav-toggle" id="navToggle" aria-label="Toggle navigation">&#9776;</button>
+
+<script>
+// Mobile sidebar toggle
+const sidebar = document.getElementById('sidebar');
+const backdrop = document.getElementById('backdrop');
+const toggle = document.getElementById('navToggle');
+
+function openNav() { sidebar.classList.add('open'); backdrop.classList.add('open'); }
+function closeNav() { sidebar.classList.remove('open'); backdrop.classList.remove('open'); }
+
+toggle.addEventListener('click', () => sidebar.classList.contains('open') ? closeNav() : openNav());
+backdrop.addEventListener('click', closeNav);
+
+// Close sidebar on nav click (mobile)
+sidebar.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+  if (window.innerWidth <= 1024) closeNav();
+}));
+
+// Scroll spy
+const links = sidebar.querySelectorAll('.sidebar-nav a');
+const sections = [];
+links.forEach(a => {
+  const id = a.getAttribute('href');
+  if (id && id.startsWith('#')) {
+    const el = document.querySelector(id);
+    if (el) sections.push({ el, link: a });
+  }
+});
+
+function updateActive() {
+  const scrollY = window.scrollY + 120;
+  let current = sections[0];
+  for (const s of sections) {
+    if (s.el.offsetTop <= scrollY) current = s;
+  }
+  links.forEach(l => l.classList.remove('active'));
+  if (current) current.link.classList.add('active');
+}
+window.addEventListener('scroll', updateActive, { passive: true });
+updateActive();
+</script>
+
+</body>
+</html>

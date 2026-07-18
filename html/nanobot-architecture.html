@@ -1,0 +1,1195 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nanobot — Architecture Overview</title>
+<style>
+  /* === Tokens === */
+  :root {
+    --canvas: #faf9f5;
+    --card: #efe9de;
+    --card-strong: #e8e0d2;
+    --dark: #181715;
+    --dark-elevated: #252320;
+    --dark-soft: #1f1e1b;
+    --coral: #cc785c;
+    --coral-active: #a9583e;
+    --teal: #5db8a6;
+    --amber: #e8a55a;
+    --ink: #141413;
+    --body: #3d3d3a;
+    --body-strong: #252523;
+    --muted: #6c6a64;
+    --muted-soft: #8e8b82;
+    --on-dark: #faf9f5;
+    --on-dark-soft: #a09d96;
+    --hairline: #e6dfd8;
+    --on-primary: #ffffff;
+    --success: #5db872;
+
+    --serif: Georgia, "Noto Serif SC", "Songti SC", "SimSun", "Times New Roman", serif;
+    --sans: "Segoe UI", -apple-system, system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+    --mono: "Cascadia Code", "JetBrains Mono", "Fira Code", "Consolas", monospace;
+
+    --section-gap: 96px;
+    --card-pad: 32px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-pill: 9999px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--canvas);
+    color: var(--body);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* === Typography === */
+  .display-xl {
+    font-family: var(--serif);
+    font-size: clamp(36px, 5vw, 64px);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -1.5px;
+    color: var(--ink);
+  }
+  .display-lg {
+    font-family: var(--serif);
+    font-size: clamp(28px, 4vw, 48px);
+    font-weight: 400;
+    line-height: 1.1;
+    letter-spacing: -1px;
+    color: var(--ink);
+  }
+  .display-md {
+    font-family: var(--serif);
+    font-size: clamp(24px, 3vw, 36px);
+    font-weight: 400;
+    line-height: 1.15;
+    letter-spacing: -0.5px;
+    color: var(--ink);
+  }
+  .display-sm {
+    font-family: var(--serif);
+    font-size: 28px;
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: -0.3px;
+    color: var(--ink);
+  }
+  .title-md {
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--ink);
+  }
+  .title-sm {
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--ink);
+  }
+  .body-md {
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.55;
+    color: var(--body);
+  }
+  .body-sm {
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.55;
+    color: var(--muted);
+  }
+  .caption {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+  .caption-upper {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .code-text {
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* === Layout === */
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  .section {
+    padding: var(--section-gap) 0;
+  }
+
+  /* === Hero === */
+  .hero {
+    padding: 120px 0 var(--section-gap);
+    position: relative;
+  }
+  .hero-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    align-items: center;
+  }
+  .hero-content { max-width: 560px; }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--card);
+    color: var(--muted);
+    padding: 6px 16px;
+    border-radius: var(--radius-pill);
+    margin-bottom: 24px;
+  }
+  .hero-badge .dot {
+    width: 8px; height: 8px;
+    background: var(--success);
+    border-radius: 50%;
+  }
+  .hero h1 {
+    text-wrap: balance;
+    margin-bottom: 20px;
+  }
+  .hero .lead {
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--body-strong);
+    max-width: 480px;
+    margin-bottom: 32px;
+  }
+  .hero-stats {
+    display: flex;
+    gap: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--hairline);
+  }
+  .hero-stat-value {
+    font-family: var(--serif);
+    font-size: 28px;
+    font-weight: 400;
+    letter-spacing: -0.5px;
+    color: var(--coral);
+  }
+  .hero-stat-label {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* Hero illustration — data flow mockup */
+  .hero-illustration {
+    background: var(--dark);
+    border-radius: var(--radius-xl);
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-illustration::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 40px;
+    background: var(--dark-elevated);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    display: flex;
+    align-items: center;
+  }
+  .window-dots {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    position: relative;
+    z-index: 1;
+  }
+  .window-dots span {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--dark-soft);
+    border: 1px solid #3a3835;
+  }
+  .window-dots span:first-child { background: #e85d4a; border-color: #c44d3d; }
+  .window-dots span:nth-child(2) { background: #e8a64a; border-color: #c48e3d; }
+  .window-dots span:nth-child(3) { background: #5db872; border-color: #4a9b5c; }
+
+  .flow-diagram {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--on-dark-soft);
+  }
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .flow-node {
+    background: var(--dark-soft);
+    border: 1px solid #3a3835;
+    border-radius: 6px;
+    padding: 8px 14px;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--on-dark);
+    transition: border-color 0.2s;
+  }
+  .flow-node.highlight {
+    border-color: var(--coral);
+    color: var(--coral);
+  }
+  .flow-node.teal { border-color: var(--teal); color: var(--teal); }
+  .flow-node.amber { border-color: var(--amber); color: var(--amber); }
+  .flow-arrow {
+    color: #555;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .flow-label {
+    font-size: 11px;
+    color: var(--on-dark-soft);
+    opacity: 0.6;
+    padding-left: 4px;
+  }
+
+  /* === Band: Cream Card === */
+  .band-card {
+    background: var(--card);
+  }
+
+  /* === Band: Dark === */
+  .band-dark {
+    background: var(--dark);
+    color: var(--on-dark);
+  }
+  .band-dark .display-lg,
+  .band-dark .display-md,
+  .band-dark .display-sm,
+  .band-dark .title-md,
+  .band-dark .title-sm {
+    color: var(--on-dark);
+  }
+  .band-dark .body-md {
+    color: var(--on-dark-soft);
+  }
+  .band-dark .body-sm {
+    color: var(--on-dark-soft);
+  }
+
+  /* === Section Headers === */
+  .section-eyebrow {
+    display: inline-block;
+    color: var(--coral);
+    margin-bottom: 12px;
+  }
+  .section-desc {
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--body);
+    max-width: 640px;
+    margin-top: 12px;
+  }
+  .band-dark .section-desc {
+    color: var(--on-dark-soft);
+  }
+
+  /* === Feature Cards Grid === */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-top: 48px;
+  }
+  .feature-card {
+    background: var(--canvas);
+    border-radius: var(--radius-lg);
+    padding: var(--card-pad);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .band-card .feature-card {
+    background: var(--canvas);
+  }
+  .feature-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .feature-icon.coral { background: rgba(204,120,92,0.12); color: var(--coral); }
+  .feature-icon.teal { background: rgba(93,184,166,0.12); color: var(--teal); }
+  .feature-icon.amber { background: rgba(232,165,90,0.12); color: var(--amber); }
+  .feature-icon.dark { background: var(--dark); color: var(--on-dark); }
+
+  .feature-card .title-md { margin-top: 4px; }
+  .feature-card .file-ref {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--coral);
+    background: rgba(204,120,92,0.08);
+    padding: 2px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-top: auto;
+  }
+
+  /* === Architecture Diagram (Dark Band) === */
+  .arch-diagram-wrap {
+    margin-top: 48px;
+    background: var(--dark-soft);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    overflow-x: auto;
+  }
+
+  .arch-layers {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    min-width: 700px;
+    position: relative;
+  }
+
+  .arch-layer {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .arch-layer-label {
+    width: 100px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    padding: 16px 0;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--on-dark-soft);
+    opacity: 0.5;
+  }
+
+  .arch-layer-content {
+    flex: 1;
+    display: flex;
+    gap: 12px;
+    padding: 16px 0;
+    flex-wrap: wrap;
+  }
+
+  .arch-box {
+    background: var(--dark-elevated);
+    border: 1px solid #3a3835;
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--on-dark);
+    white-space: nowrap;
+    position: relative;
+    transition: border-color 0.2s, transform 0.15s;
+    cursor: default;
+  }
+  .arch-box:hover {
+    border-color: var(--coral);
+    transform: translateY(-1px);
+  }
+  .arch-box.core {
+    border-color: var(--coral);
+    background: rgba(204,120,92,0.08);
+  }
+  .arch-box.bus {
+    border-color: var(--teal);
+    background: rgba(93,184,166,0.06);
+    color: var(--teal);
+  }
+  .arch-box small {
+    display: block;
+    font-size: 10px;
+    color: var(--on-dark-soft);
+    margin-top: 4px;
+    font-family: var(--sans);
+  }
+
+  .arch-connector {
+    display: flex;
+    justify-content: center;
+    padding: 4px 0 4px 100px;
+  }
+  .arch-connector-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--on-dark-soft);
+    opacity: 0.35;
+    font-size: 12px;
+  }
+  .arch-connector-line .line {
+    width: 1px;
+    height: 20px;
+    background: var(--on-dark-soft);
+    opacity: 0.4;
+  }
+
+  /* === Provider / Channel Lists (Dark Band) === */
+  .impl-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px;
+    margin-top: 48px;
+  }
+  .impl-section {
+    background: var(--dark-soft);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+  }
+  .impl-section h3 {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 400;
+    letter-spacing: -0.3px;
+    color: var(--on-dark);
+    margin-bottom: 16px;
+  }
+  .impl-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .impl-tag {
+    background: var(--dark-elevated);
+    border: 1px solid #3a3835;
+    color: var(--on-dark-soft);
+    font-size: 13px;
+    padding: 5px 14px;
+    border-radius: var(--radius-pill);
+    font-family: var(--sans);
+  }
+  .impl-tag.active {
+    border-color: var(--coral);
+    color: var(--coral);
+  }
+
+  /* === Code Window Card === */
+  .code-window {
+    background: var(--dark);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-top: 32px;
+  }
+  .code-window-bar {
+    background: var(--dark-elevated);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid #3a3835;
+  }
+  .code-window-bar .tab {
+    font-size: 12px;
+    color: var(--on-dark-soft);
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-family: var(--mono);
+  }
+  .code-window-bar .tab.active {
+    background: var(--dark);
+    color: var(--on-dark);
+  }
+  .code-window pre {
+    padding: 20px 24px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--on-dark-soft);
+  }
+  .code-window pre .kw { color: #c4a7e7; }
+  .code-window pre .fn { color: #eb9b68; }
+  .code-window pre .str { color: #a3d9a5; }
+  .code-window pre .cm { color: #6c6a64; }
+  .code-window pre .cls { color: #82aaff; }
+  .code-window pre .tp { color: #89ddff; }
+
+  /* === Data Flow Section === */
+  .dataflow-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-top: 48px;
+    position: relative;
+  }
+  .dataflow-step {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 24px;
+    position: relative;
+  }
+  .dataflow-step::before {
+    content: '';
+    position: absolute;
+    left: 31px;
+    top: 48px;
+    bottom: -1px;
+    width: 1px;
+    background: var(--hairline);
+  }
+  .dataflow-step:last-child::before { display: none; }
+  .dataflow-number {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--serif);
+    font-size: 24px;
+    font-weight: 400;
+    color: var(--coral);
+    background: rgba(204,120,92,0.08);
+    border: 1px solid rgba(204,120,92,0.2);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .dataflow-body {
+    padding: 12px 0 48px;
+  }
+  .dataflow-body h3 {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 400;
+    letter-spacing: -0.3px;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .dataflow-body p {
+    color: var(--body);
+    max-width: 560px;
+  }
+  .dataflow-body .file-ref {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--coral);
+    background: rgba(204,120,92,0.08);
+    padding: 2px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-top: 12px;
+  }
+
+  /* === Tool Grid === */
+  .tool-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin-top: 24px;
+  }
+  .tool-tile {
+    background: var(--canvas);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .tool-tile .tool-name {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .tool-tile .tool-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  /* === Entry Point Section === */
+  .entry-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-top: 48px;
+  }
+  .entry-card {
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    background: var(--canvas);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .entry-card .entry-cmd {
+    font-family: var(--mono);
+    font-size: 14px;
+    background: var(--dark);
+    color: var(--on-dark);
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-top: auto;
+  }
+
+  /* === Coral CTA Band === */
+  .band-coral {
+    background: var(--coral);
+    color: var(--on-primary);
+    text-align: center;
+  }
+  .band-coral .display-sm {
+    color: var(--on-primary);
+  }
+  .band-coral p {
+    color: rgba(255,255,255,0.85);
+    max-width: 480px;
+    margin: 12px auto 0;
+  }
+  .band-coral .cta-links {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+  .band-coral .cta-link {
+    background: var(--canvas);
+    color: var(--ink);
+    padding: 10px 24px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+
+  /* === Footer === */
+  .footer {
+    background: var(--dark);
+    padding: 48px 0;
+  }
+  .footer-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .footer-brand {
+    font-family: var(--serif);
+    font-size: 18px;
+    color: var(--on-dark);
+    letter-spacing: -0.3px;
+  }
+  .footer-meta {
+    font-size: 13px;
+    color: var(--on-dark-soft);
+  }
+
+  /* === Responsive === */
+  @media (max-width: 1024px) {
+    .hero-inner { grid-template-columns: 1fr; }
+    .hero-illustration { margin-top: 32px; }
+    .feature-grid { grid-template-columns: repeat(2, 1fr); }
+    .impl-grid { grid-template-columns: 1fr; }
+    .entry-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 768px) {
+    :root { --section-gap: 64px; --card-pad: 24px; }
+    .hero { padding-top: 80px; }
+    .feature-grid { grid-template-columns: 1fr; }
+    .entry-grid { grid-template-columns: 1fr; }
+    .hero-stats { flex-direction: column; gap: 16px; }
+    .arch-layer-label { width: 72px; font-size: 10px; }
+    .dataflow-step { grid-template-columns: 48px 1fr; gap: 16px; }
+    .dataflow-number { width: 48px; height: 48px; font-size: 18px; }
+    .dataflow-step::before { left: 23px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ====== HERO ====== -->
+<section class="hero">
+  <div class="container hero-inner">
+    <div class="hero-content">
+      <div class="hero-badge caption">
+        <span class="dot"></span>
+        Python + React/TypeScript
+      </div>
+      <h1 class="display-xl">nanobot</h1>
+      <p class="lead">一个轻量级的开源 AI Agent 框架。它围绕一个小型 agent 循环构建——接收来自各类聊天渠道的消息，调用 LLM 提供商，执行工具，管理会话记忆。</p>
+      <div class="hero-stats">
+        <div>
+          <div class="hero-stat-value">15+</div>
+          <div class="hero-stat-label">聊天渠道</div>
+        </div>
+        <div>
+          <div class="hero-stat-value">7+</div>
+          <div class="hero-stat-label">LLM 提供商</div>
+        </div>
+        <div>
+          <div class="hero-stat-value">16+</div>
+          <div class="hero-stat-label">内置工具</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hero illustration: data flow mockup -->
+    <div class="hero-illustration">
+      <div class="window-dots">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="flow-diagram">
+        <div class="flow-label">消息入站</div>
+        <div class="flow-row">
+          <span class="flow-node">Telegram</span>
+          <span class="flow-node">Discord</span>
+          <span class="flow-node">Slack</span>
+          <span class="flow-node">WebUI</span>
+        </div>
+        <div class="flow-row">
+          <span class="flow-arrow">↓</span>
+        </div>
+        <div class="flow-row">
+          <span class="flow-node teal">MessageBus</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-node highlight">AgentLoop</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-node highlight">AgentRunner</span>
+        </div>
+        <div class="flow-row">
+          <span class="flow-arrow">↓</span>
+        </div>
+        <div class="flow-row">
+          <span class="flow-node amber">LLM Provider</span>
+          <span class="flow-arrow">⇄</span>
+          <span class="flow-node amber">Tool Execution</span>
+        </div>
+        <div class="flow-row">
+          <span class="flow-arrow">↓</span>
+        </div>
+        <div class="flow-label">响应出站</div>
+        <div class="flow-row">
+          <span class="flow-node teal">MessageBus</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-node">Channel</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== DATA FLOW (Cream) ====== -->
+<section class="section">
+  <div class="container">
+    <div class="caption-upper section-eyebrow">Core Data Flow</div>
+    <h2 class="display-lg">消息如何流转</h2>
+    <p class="section-desc">消息通过一个异步 <code>MessageBus</code> 流转，它将聊天渠道与 Agent 核心完全解耦。整个流程分为四个阶段。</p>
+
+    <div class="dataflow-steps">
+      <div class="dataflow-step">
+        <div class="dataflow-number">1</div>
+        <div class="dataflow-body">
+          <h3>渠道接收</h3>
+          <p>各平台的 Channel 实现监听外部消息（Telegram、Discord、微信等），将原始消息封装为统一的 <code>InboundMessage</code> 事件，发布到 MessageBus。</p>
+          <span class="file-ref">nanobot/channels/base.py</span>
+        </div>
+      </div>
+      <div class="dataflow-step">
+        <div class="dataflow-number">2</div>
+        <div class="dataflow-body">
+          <h3>Agent 循环协调</h3>
+          <p><code>AgentLoop</code> 消费入站消息，管理 session key、加载上下文（系统提示词、会话历史、Skills），然后将完整的上下文交给 AgentRunner。</p>
+          <span class="file-ref">nanobot/agent/loop.py</span>
+        </div>
+      </div>
+      <div class="dataflow-step">
+        <div class="dataflow-number">3</div>
+        <div class="dataflow-body">
+          <h3>LLM 对话与工具执行</h3>
+          <p><code>AgentRunner</code> 执行多轮 LLM 对话循环：发送消息给 Provider、接收 tool call 请求、执行工具、将结果反馈给 LLM，直到模型给出最终回复。</p>
+          <span class="file-ref">nanobot/agent/runner.py</span>
+        </div>
+      </div>
+      <div class="dataflow-step">
+        <div class="dataflow-number">4</div>
+        <div class="dataflow-body">
+          <h3>响应分发</h3>
+          <p>最终回复封装为 <code>OutboundMessage</code>，通过 MessageBus 路由回对应的 Channel，由 Channel 负责格式化和发送给用户。</p>
+          <span class="file-ref">nanobot/bus/queue.py</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== ARCHITECTURE DIAGRAM (Dark Band) ====== -->
+<section class="section band-dark">
+  <div class="container">
+    <div class="caption-upper section-eyebrow" style="color:var(--coral)">Architecture</div>
+    <h2 class="display-lg">系统分层架构</h2>
+    <p class="section-desc">nanobot 采用分层架构，每一层通过明确的接口与其他层交互。MessageBus 是中枢神经，解耦了所有外部输入和内部处理。</p>
+
+    <div class="arch-diagram-wrap">
+      <div class="arch-layers">
+        <!-- Layer: External -->
+        <div class="arch-layer">
+          <div class="arch-layer-label">外部</div>
+          <div class="arch-layer-content">
+            <div class="arch-box">Telegram<small>channels/telegram.py</small></div>
+            <div class="arch-box">Discord<small>channels/discord.py</small></div>
+            <div class="arch-box">Slack<small>channels/slack.py</small></div>
+            <div class="arch-box">飞书<small>channels/feishu.py</small></div>
+            <div class="arch-box">微信/企微<small>channels/weixin.py</small></div>
+            <div class="arch-box">WebSocket<small>channels/websocket.py</small></div>
+            <div class="arch-box">Email<small>channels/email.py</small></div>
+          </div>
+        </div>
+
+        <!-- Connector -->
+        <div class="arch-connector">
+          <div class="arch-connector-line">
+            <div class="line"></div>
+            <span>InboundMessage / OutboundMessage</span>
+            <div class="line"></div>
+          </div>
+        </div>
+
+        <!-- Layer: Bus -->
+        <div class="arch-layer">
+          <div class="arch-layer-label">消息总线</div>
+          <div class="arch-layer-content">
+            <div class="arch-box bus" style="flex:1;text-align:center">
+              MessageBus<small>asyncio.Queue — 入站/出站双队列解耦</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Connector -->
+        <div class="arch-connector">
+          <div class="arch-connector-line">
+            <div class="line"></div>
+            <span>consume / publish</span>
+            <div class="line"></div>
+          </div>
+        </div>
+
+        <!-- Layer: Agent Core -->
+        <div class="arch-layer">
+          <div class="arch-layer-label">Agent 核心</div>
+          <div class="arch-layer-content">
+            <div class="arch-box core">AgentLoop<small>会话管理 · 上下文构建 · Hook</small></div>
+            <div class="arch-box core">AgentRunner<small>多轮对话 · 工具执行 · 流式输出</small></div>
+            <div class="arch-box">ContextBuilder<small>系统提示词 · 记忆 · Skills</small></div>
+            <div class="arch-box">SubagentManager<small>子Agent调度</small></div>
+          </div>
+        </div>
+
+        <!-- Connector -->
+        <div class="arch-connector">
+          <div class="arch-connector-line">
+            <div class="line"></div>
+            <span>send / stream / tool_call</span>
+            <div class="line"></div>
+          </div>
+        </div>
+
+        <!-- Layer: Providers & Tools -->
+        <div class="arch-layer">
+          <div class="arch-layer-label">能力层</div>
+          <div class="arch-layer-content">
+            <div class="arch-box">LLM Providers<small>Anthropic · OpenAI · Azure · Bedrock</small></div>
+            <div class="arch-box">Tool Registry<small>文件 · Shell · Web · MCP · Cron</small></div>
+            <div class="arch-box">Memory<small>会话持久化 · Dream 记忆整合</small></div>
+            <div class="arch-box">Session<small>历史管理 · 自动压缩 · Goal</small></div>
+          </div>
+        </div>
+
+        <!-- Connector -->
+        <div class="arch-connector">
+          <div class="arch-connector-line">
+            <div class="line"></div>
+            <span>Config / Storage</span>
+            <div class="line"></div>
+          </div>
+        </div>
+
+        <!-- Layer: Infrastructure -->
+        <div class="arch-layer">
+          <div class="arch-layer-label">基础设施</div>
+          <div class="arch-layer-content">
+            <div class="arch-box">Config<small>Pydantic schema · JSON 加载</small></div>
+            <div class="arch-box">API Server<small>OpenAI 兼容 HTTP API</small></div>
+            <div class="arch-box">Gateway<small>WebSocket 多路复用</small></div>
+            <div class="arch-box">Security<small>PTH 文件守卫 · 沙盒</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== KEY SUBSYSTEMS (Cream Card Band) ====== -->
+<section class="section band-card">
+  <div class="container">
+    <div class="caption-upper section-eyebrow">Subsystems</div>
+    <h2 class="display-lg">六大核心子系统</h2>
+    <p class="section-desc">每个子系统各司其职，通过接口解耦协作。了解这六个模块就理解了 nanobot 的骨架。</p>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon coral">⟲</div>
+        <div class="title-md">Agent 核心</div>
+        <p class="body-md">整个系统的处理引擎。<code>AgentLoop</code> 管理会话、Hook、上下文构建；<code>AgentRunner</code> 执行 LLM 多轮对话和工具调用。支持并发工具执行和流式输出。</p>
+        <span class="file-ref">agent/loop.py · runner.py</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon amber">⬡</div>
+        <div class="title-md">LLM Providers</div>
+        <p class="body-md">统一的 LLM 提供商接口。所有 Provider 继承 <code>LLMProvider</code> 基类，实现 <code>send_message</code> 方法。通过 Factory + Registry 模式按模型名自动路由。</p>
+        <span class="file-ref">providers/base.py · factory.py</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon teal">⇌</div>
+        <div class="title-md">Channels</div>
+        <p class="body-md">平台集成层。每个 Channel 继承 <code>BaseChannel</code>，将平台消息转换为 <code>InboundMessage</code>。通过 <code>pkgutil</code> 扫描和 entry-point 插件自动发现。</p>
+        <span class="file-ref">channels/base.py · manager.py</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon dark">⚙</div>
+        <div class="title-md">Tools</div>
+        <p class="body-md">暴露给 LLM 的能力集合：文件系统操作、Shell 执行（带沙盒）、Web 搜索/抓取、MCP Server、定时任务、子Agent 生成、图像生成等。同样通过插件机制自动发现。</p>
+        <span class="file-ref">agent/tools/registry.py</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon coral">◉</div>
+        <div class="title-md">Memory 与 Session</div>
+        <p class="body-md">会话历史持久化，采用 Dream 两阶段记忆整合。Session Manager 管理每会话历史、上下文压缩（当上下文过长时自动 compact）、TTL 过期清理。</p>
+        <span class="file-ref">agent/memory.py · session/</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon teal">◧</div>
+        <div class="title-md">WebUI</div>
+        <p class="body-md">基于 Vite + React 的单页应用。通过 WebSocket 多路复用协议与 Gateway 通信。Dev Server 自动代理 <code>/api</code>、<code>/auth</code> 和 WebSocket 请求。</p>
+        <span class="file-ref">webui/src/App.tsx</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== PROVIDERS & CHANNELS (Dark Band) ====== -->
+<section class="section band-dark">
+  <div class="container">
+    <div class="caption-upper section-eyebrow" style="color:var(--coral)">Implementations</div>
+    <h2 class="display-lg">已实现的 Provider 和 Channel</h2>
+    <p class="section-desc">Providers 和 Channels 都是可插拔的——继承基类、实现接口、放进对应目录，框架自动发现并注册。</p>
+
+    <div class="impl-grid">
+      <div class="impl-section">
+        <h3>LLM Providers</h3>
+        <div class="impl-tags">
+          <span class="impl-tag active">Anthropic</span>
+          <span class="impl-tag active">OpenAI Compatible</span>
+          <span class="impl-tag">Azure OpenAI</span>
+          <span class="impl-tag">Bedrock</span>
+          <span class="impl-tag">GitHub Copilot</span>
+          <span class="impl-tag">OpenAI Codex</span>
+          <span class="impl-tag">Fallback</span>
+        </div>
+      </div>
+      <div class="impl-section">
+        <h3>Chat Channels</h3>
+        <div class="impl-tags">
+          <span class="impl-tag active">Telegram</span>
+          <span class="impl-tag active">Discord</span>
+          <span class="impl-tag">Slack</span>
+          <span class="impl-tag">飞书</span>
+          <span class="impl-tag">Matrix</span>
+          <span class="impl-tag">WhatsApp</span>
+          <span class="impl-tag">微信</span>
+          <span class="impl-tag">企业微信</span>
+          <span class="impl-tag">钉钉</span>
+          <span class="impl-tag">QQ</span>
+          <span class="impl-tag">Email</span>
+          <span class="impl-tag">Teams</span>
+          <span class="impl-tag">MoChat</span>
+          <span class="impl-tag">Mattermost</span>
+          <span class="impl-tag">Signal</span>
+          <span class="impl-tag active">WebSocket</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Code Window: AgentRunner loop -->
+    <div class="code-window">
+      <div class="code-window-bar">
+        <span class="tab active">runner.py</span>
+        <span class="tab">loop.py</span>
+        <span class="tab">base.py</span>
+      </div>
+      <pre><span class="cm"># AgentRunner 的核心循环（简化版）</span>
+
+<span class="kw">class</span> <span class="cls">AgentRunner</span>:
+    <span class="kw">async def</span> <span class="fn">run</span>(<span class="tp">self</span>, spec: <span class="cls">AgentRunSpec</span>) -> <span class="cls">LLMResponse</span>:
+        messages = spec.initial_messages
+
+        <span class="kw">for</span> iteration <span class="kw">in</span> <span class="fn">range</span>(spec.max_iterations):
+            <span class="cm"># 1. 发送消息给 LLM Provider</span>
+            response = <span class="kw">await</span> spec.runtime.provider.<span class="fn">send_message</span>(messages)
+
+            <span class="cm"># 2. 检查是否有 tool call 请求</span>
+            <span class="kw">if not</span> response.tool_calls:
+                <span class="kw">return</span> response  <span class="cm"># 最终回复，结束循环</span>
+
+            <span class="cm"># 3. 执行所有请求的工具</span>
+            <span class="kw">for</span> call <span class="kw">in</span> response.tool_calls:
+                result = <span class="kw">await</span> spec.tools.<span class="fn">execute</span>(call.name, call.arguments)
+                messages.<span class="fn">append</span>(<span class="fn">tool_result_message</span>(call.id, result))
+
+            <span class="cm"># 4. 将工具结果反馈给 LLM，继续循环</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ====== TOOLS (Cream) ====== -->
+<section class="section">
+  <div class="container">
+    <div class="caption-upper section-eyebrow">Agent Tools</div>
+    <h2 class="display-lg">工具能力一览</h2>
+    <p class="section-desc">工具是 Agent 暴露给 LLM 的能力接口。所有工具继承 <code>Tool</code> 基类，通过 <code>ToolRegistry</code> 统一管理，支持 JSON Schema 参数验证。</p>
+
+    <div class="tool-grid">
+      <div class="tool-tile">
+        <span class="tool-name">filesystem</span>
+        <span class="tool-desc">文件读写、编辑、列目录</span>
+      </div>
+      <div class="tool-tile">
+        <span class="tool-name">shell</span>
+        <span class="tool-desc">Shell 命令执行，支持沙盒后端</span>
+      </div>
+      <div class="tool-tile">
+        <span class="tool-name">web</span>
+        <span class="tool-desc">Web 搜索与网页内容抓取</span>
+      </div>
+      <div class="tool-tile">
+        <span class="tool-name">mcp</span>
+        <span class="tool-desc">MCP Server 协议交互</span>
+      </div>
+      <div class="tool-tile">
+        <span class="tool-name">apply_patch</span>
+        <span class="tool-desc">应用代码补丁</span>
+      </div>
+      <div class="tool-tile">
+        <span class="tool-name">search</span>
+        <span class="tool-desc">代码搜索与文件查找</span>
+      </div>
+      <div class="tool-tile">
+        <span class="tool-name">spawn</span>
+        <span class="tool-desc">子 Agent 生成与管理</span>
+      </div>
+      <div class="tool-tile">
+        <span class="tool-name">cron</span>
+        <span class="tool-desc">定时任务调度</span>
+      </div>
+      <div class="tool-tile">
+        <span class="tool-name">long_task</span>
+        <span class="tool-desc">长任务与持续目标追踪</span>
+      </div>
+      <div class="tool-tile">
+        <span class="tool-name">image_generation</span>
+        <span class="tool-desc">图像生成调用</span>
+      </div>
+      <div class="tool-tile">
+        <span class="tool-name">message</span>
+        <span class="tool-desc">消息发送工具</span>
+      </div>
+      <div class="tool-tile">
+        <span class="tool-name">self</span>
+        <span class="tool-desc">Agent 自我修改能力</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== ENTRY POINTS (Cream Card) ====== -->
+<section class="section band-card">
+  <div class="container">
+    <div class="caption-upper section-eyebrow">Getting Started</div>
+    <h2 class="display-lg">三种使用方式</h2>
+    <p class="section-desc">无论是直接 CLI 启动、通过 Python SDK 嵌入、还是使用 WebUI 交互，nanobot 都提供一致的 Agent 体验。</p>
+
+    <div class="entry-grid">
+      <div class="entry-card">
+        <div class="title-md">CLI 命令行</div>
+        <p class="body-md">通过 <code>nanobot gateway</code> 启动网关服务，加载配置并初始化所有已启用的 Channel。</p>
+        <div class="entry-cmd">$ nanobot gateway</div>
+      </div>
+      <div class="entry-card">
+        <div class="title-md">Python SDK</div>
+        <p class="body-md">通过 <code>nanobot.py</code> 以编程方式创建 Agent 实例，适合嵌入到其他应用中。</p>
+        <div class="entry-cmd">from nanobot import Nanobot</div>
+      </div>
+      <div class="entry-card">
+        <div class="title-md">WebUI</div>
+        <p class="body-md">Vite + React SPA，通过 WebSocket 与 Gateway 通信。支持聊天、设置、文件预览、代码高亮。</p>
+        <div class="entry-cmd">$ cd webui && bun run dev</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== KEY FILES (Coral CTA) ====== -->
+<section class="section band-coral" style="padding:64px 0">
+  <div class="container">
+    <div class="display-sm">想深入代码？</div>
+    <p class="body-md">从这几个关键文件开始，你就能串起整个项目的脉络。</p>
+    <div class="cta-links">
+      <span class="cta-link">agent/loop.py</span>
+      <span class="cta-link">agent/runner.py</span>
+      <span class="cta-link">bus/queue.py</span>
+      <span class="cta-link">providers/base.py</span>
+      <span class="cta-link">channels/base.py</span>
+      <span class="cta-link">config/schema.py</span>
+    </div>
+  </div>
+</section>
+
+<!-- ====== FOOTER ====== -->
+<footer class="footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">nanobot</div>
+    <div class="footer-meta">Architecture Overview — built from source</div>
+  </div>
+</footer>
+
+</body>
+</html>
