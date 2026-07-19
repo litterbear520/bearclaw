@@ -13,7 +13,10 @@ class Tool(ABC):
     
     def to_schema(self) -> dict:
         return {
-            "name": self.name,
-            "description": self.description,
-            "input_schema": self.params
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self.params,
+            }
         }
