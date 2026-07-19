@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
 
 class Tool(ABC):
@@ -7,7 +8,7 @@ class Tool(ABC):
     params: dict = {}
 
     @abstractmethod
-    def run(self, **kwargs: str) -> str:
+    def run(self, **kwargs: Any) -> Any:
         pass
     
     def to_schema(self) -> dict:
