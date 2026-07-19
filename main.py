@@ -1,9 +1,11 @@
 import os
 
+from pathlib import Path
 from dotenv import load_dotenv
 
 from tools.loader import load_tools
 from providers.factory import make_provider
+from session.manager import SessionManager
 
 load_dotenv()
 
@@ -47,15 +49,17 @@ def agent_loop(messages: list):
 # 主函数
 if __name__ == "__main__":
     print("Welcome to bearclaw!")
-    history = []
+    sessions = SessionManager(Path.cwd())
+    session = sessions.get_or_create("default")
     while True: 
         try: 
             query = input(">> ")
         except Exception:
             break
-        history.append({"role": "user", "content": query})
-        agent_loop(history)
-        for msg in reversed(history):
+        session.messages.append({"role": "user", "content": query})
+        agent_loop(session.messages)
+        sessions.save(session)
+        for msg in reversed(session.messages):
             if msg.get("role") == "assistant" and msg.get("content"):
                 print(msg["content"])
                 break
