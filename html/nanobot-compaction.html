@@ -1,0 +1,1802 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>nanobot 对话压缩机制 — Context Compaction</title>
+<style>
+/* ===== DESIGN TOKENS (from DESIGN.md) ===== */
+:root {
+  /* Brand & Accent */
+  --primary: #cc785c;
+  --primary-active: #a9583e;
+  --primary-disabled: #e6dfd8;
+  --accent-teal: #5db8a6;
+  --accent-amber: #e8a55a;
+
+  /* Surface */
+  --canvas: #faf9f5;
+  --surface-soft: #f5f0e8;
+  --surface-card: #efe9de;
+  --surface-cream-strong: #e8e0d2;
+  --surface-dark: #181715;
+  --surface-dark-elevated: #252320;
+  --surface-dark-soft: #1f1e1b;
+  --hairline: #e6dfd8;
+  --hairline-soft: #ebe6df;
+
+  /* Text */
+  --ink: #141413;
+  --body-strong: #252523;
+  --body: #3d3d3a;
+  --muted: #6c6a64;
+  --muted-soft: #8e8b82;
+  --on-primary: #ffffff;
+  --on-dark: #faf9f5;
+  --on-dark-soft: #a09d96;
+
+  /* Semantic */
+  --success: #5db872;
+  --warning: #d4a017;
+  --error: #c64545;
+
+  /* Spacing */
+  --sp-xxs: 4px;
+  --sp-xs: 8px;
+  --sp-sm: 12px;
+  --sp-md: 16px;
+  --sp-lg: 24px;
+  --sp-xl: 32px;
+  --sp-xxl: 48px;
+  --sp-section: 96px;
+
+  /* Radius */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --r-pill: 9999px;
+
+  /* Typography — Windows + CJK adapted */
+  --font-display: "Microsoft YaHei", "PingFang SC", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Segoe UI", -apple-system, system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-code: "Cascadia Code", "JetBrains Mono", "Fira Code", Consolas, monospace;
+}
+
+/* ===== RESET & BASE ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: 1.55;
+  color: var(--body);
+  background: var(--canvas);
+}
+
+a { color: var(--primary); text-decoration: none; }
+a:active { color: var(--primary-active); text-decoration: underline; }
+
+/* ===== TYPOGRAPHY ===== */
+.display-xl { font-family: var(--font-display); font-size: 56px; font-weight: 600; line-height: 1.08; letter-spacing: -0.5px; color: var(--ink); }
+.display-lg { font-family: var(--font-display); font-size: 42px; font-weight: 600; line-height: 1.12; letter-spacing: -0.4px; color: var(--ink); }
+.display-md { font-family: var(--font-display); font-size: 32px; font-weight: 600; line-height: 1.18; letter-spacing: -0.3px; color: var(--ink); }
+.display-sm { font-family: var(--font-display); font-size: 24px; font-weight: 600; line-height: 1.22; letter-spacing: -0.2px; color: var(--ink); }
+.title-lg   { font-family: var(--font-body); font-size: 22px; font-weight: 500; line-height: 1.3; color: var(--ink); }
+.title-md   { font-family: var(--font-body); font-size: 18px; font-weight: 500; line-height: 1.4; color: var(--ink); }
+.title-sm   { font-family: var(--font-body); font-size: 16px; font-weight: 500; line-height: 1.4; color: var(--ink); }
+.body-md    { font-size: 16px; font-weight: 400; line-height: 1.55; }
+.body-sm    { font-size: 14px; font-weight: 400; line-height: 1.55; }
+.caption    { font-size: 13px; font-weight: 500; line-height: 1.4; }
+.caption-up { font-size: 12px; font-weight: 500; line-height: 1.4; letter-spacing: 1.5px; text-transform: uppercase; }
+
+code, .code {
+  font-family: var(--font-code);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ===== LAYOUT ===== */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--sp-xl);
+}
+
+.band {
+  padding: var(--sp-section) 0;
+}
+
+.band + .band {
+  border-top: none;
+}
+
+/* ===== NAV ===== */
+.top-nav {
+  height: 64px;
+  background: var(--canvas);
+  border-bottom: 1px solid var(--hairline);
+  display: flex;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.top-nav .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: -0.3px;
+  color: var(--ink);
+}
+
+.nav-brand .spike {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+}
+
+.nav-links {
+  display: flex;
+  gap: var(--sp-lg);
+  list-style: none;
+}
+
+.nav-links a {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+  transition: color 0.15s;
+}
+
+.nav-links a:hover { color: var(--ink); }
+.nav-links a.active { color: var(--ink); }
+
+/* ===== HERO ===== */
+.hero-band {
+  padding: var(--sp-section) 0 var(--sp-xxl);
+  background: var(--canvas);
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-xxl);
+  align-items: center;
+}
+
+.hero-subtitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--primary);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: var(--sp-md);
+}
+
+.hero-title {
+  margin-bottom: var(--sp-lg);
+}
+
+.hero-desc {
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--body-strong);
+  margin-bottom: var(--sp-xl);
+}
+
+.hero-meta {
+  display: flex;
+  gap: var(--sp-lg);
+}
+
+.hero-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hero-meta-label {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted-soft);
+}
+
+.hero-meta-value {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  color: var(--ink);
+}
+
+/* Hero illustration card */
+.hero-illustration {
+  background: var(--surface-dark);
+  border-radius: var(--r-xl);
+  padding: var(--sp-xl);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-illustration::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -30%;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(204, 120, 92, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ===== FLOW DIAGRAM (SVG in hero) ===== */
+.flow-diagram {
+  width: 100%;
+  height: auto;
+}
+
+.flow-diagram text {
+  font-family: var(--font-body);
+}
+
+.flow-diagram .flow-label {
+  fill: var(--on-dark);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.flow-diagram .flow-sublabel {
+  fill: var(--on-dark-soft);
+  font-size: 9px;
+}
+
+.flow-diagram .flow-box {
+  rx: 8;
+  ry: 8;
+}
+
+.flow-diagram .flow-arrow {
+  stroke: var(--on-dark-soft);
+  stroke-width: 1.5;
+  fill: none;
+  marker-end: url(#arrowhead);
+}
+
+/* ===== PROBLEM SECTION ===== */
+.problem-band {
+  background: var(--surface-card);
+  padding: var(--sp-section) 0;
+}
+
+.problem-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-lg);
+  margin-top: var(--sp-xxl);
+}
+
+.problem-card {
+  background: var(--canvas);
+  border-radius: var(--r-lg);
+  padding: var(--sp-xl);
+  border: 1px solid var(--hairline-soft);
+}
+
+.problem-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin-bottom: var(--sp-md);
+}
+
+.problem-icon.red { background: rgba(198, 69, 69, 0.1); }
+.problem-icon.amber { background: rgba(232, 165, 90, 0.1); }
+.problem-icon.teal { background: rgba(93, 184, 166, 0.1); }
+
+.problem-card h3 {
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: var(--sp-xs);
+}
+
+.problem-card p {
+  font-size: 15px;
+  color: var(--body);
+  line-height: 1.6;
+}
+
+/* ===== ARCHITECTURE OVERVIEW ===== */
+.arch-band {
+  background: var(--canvas);
+  padding: var(--sp-section) 0;
+}
+
+.arch-intro {
+  max-width: 720px;
+  margin-bottom: var(--sp-xxl);
+}
+
+.arch-intro p {
+  font-size: 18px;
+  line-height: 1.65;
+  color: var(--body-strong);
+}
+
+/* Layer cards */
+.layer-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-lg);
+}
+
+.layer-card {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+}
+
+.layer-badge {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: var(--sp-xl);
+  text-align: center;
+  gap: var(--sp-xs);
+}
+
+.layer-badge .layer-num {
+  font-family: var(--font-display);
+  font-size: 48px;
+  font-weight: 600;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+
+.layer-badge .layer-name {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.layer-badge.l1 { background: var(--surface-dark); }
+.layer-badge.l1 .layer-num { color: var(--primary); }
+.layer-badge.l1 .layer-name { color: var(--on-dark-soft); }
+
+.layer-badge.l2 { background: var(--primary); }
+.layer-badge.l2 .layer-num { color: var(--on-primary); }
+.layer-badge.l2 .layer-name { color: rgba(255,255,255,0.7); }
+
+.layer-badge.l3 { background: var(--surface-card); }
+.layer-badge.l3 .layer-num { color: var(--primary); }
+.layer-badge.l3 .layer-name { color: var(--muted); }
+
+.layer-body {
+  padding: var(--sp-xl);
+  background: var(--canvas);
+}
+
+.layer-body h3 {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  color: var(--ink);
+  margin-bottom: var(--sp-xs);
+}
+
+.layer-body .layer-file {
+  font-family: var(--font-code);
+  font-size: 13px;
+  color: var(--primary);
+  margin-bottom: var(--sp-md);
+  display: inline-block;
+}
+
+.layer-body p {
+  font-size: 15px;
+  color: var(--body);
+  line-height: 1.6;
+  margin-bottom: var(--sp-md);
+}
+
+.layer-body p:last-child { margin-bottom: 0; }
+
+/* ===== DETAIL SECTION ===== */
+.detail-band {
+  padding: var(--sp-section) 0;
+}
+
+.detail-band.dark {
+  background: var(--surface-dark);
+  color: var(--on-dark);
+}
+
+.detail-band.cream {
+  background: var(--surface-card);
+}
+
+.detail-band.canvas {
+  background: var(--canvas);
+}
+
+.detail-header {
+  margin-bottom: var(--sp-xxl);
+}
+
+.detail-header .badge {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: var(--sp-md);
+}
+
+.badge-coral { background: var(--primary); color: var(--on-primary); }
+.badge-dark { background: var(--surface-dark-elevated); color: var(--on-dark); }
+.badge-cream { background: var(--surface-cream-strong); color: var(--ink); }
+
+.detail-header h2 {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  margin-bottom: var(--sp-md);
+}
+
+.detail-header p {
+  font-size: 18px;
+  line-height: 1.6;
+  max-width: 720px;
+}
+
+.detail-band.dark .detail-header h2 { color: var(--on-dark); }
+.detail-band.dark .detail-header p { color: var(--on-dark-soft); }
+
+/* Two-col detail */
+.detail-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-xxl);
+  align-items: start;
+}
+
+/* Step list */
+.step-list {
+  list-style: none;
+  counter-reset: steps;
+}
+
+.step-list li {
+  counter-increment: steps;
+  display: flex;
+  gap: var(--sp-md);
+  margin-bottom: var(--sp-lg);
+  align-items: flex-start;
+}
+
+.step-list li:last-child { margin-bottom: 0; }
+
+.step-list li::before {
+  content: counter(steps);
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.detail-band.dark .step-list li::before {
+  background: var(--surface-dark-elevated);
+  color: var(--primary);
+}
+
+.detail-band.cream .step-list li::before,
+.detail-band.canvas .step-list li::before {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.step-list .step-title {
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.detail-band.dark .step-list .step-title { color: var(--on-dark); }
+.detail-band.cream .step-list .step-title,
+.detail-band.canvas .step-list .step-title { color: var(--ink); }
+
+.step-list .step-desc {
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.detail-band.dark .step-list .step-desc { color: var(--on-dark-soft); }
+.detail-band.cream .step-list .step-desc,
+.detail-band.canvas .step-list .step-desc { color: var(--body); }
+
+/* Code window */
+.code-window {
+  background: var(--surface-dark);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.detail-band.dark .code-window {
+  background: var(--surface-dark-soft);
+}
+
+.code-window-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  padding: var(--sp-sm) var(--sp-lg);
+  background: var(--surface-dark-elevated);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.code-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.code-dot.red { background: #ff5f57; }
+.code-dot.yellow { background: #febc2e; }
+.code-dot.green { background: #28c840; }
+
+.code-window-title {
+  font-family: var(--font-code);
+  font-size: 12px;
+  color: var(--on-dark-soft);
+  margin-left: var(--sp-xs);
+}
+
+.code-window-body {
+  padding: var(--sp-lg);
+  overflow-x: auto;
+}
+
+.code-window-body pre {
+  margin: 0;
+  font-family: var(--font-code);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--on-dark);
+  white-space: pre;
+  tab-size: 4;
+}
+
+.code-window-body .c-kw { color: #c792ea; }
+.code-window-body .c-fn { color: #82aaff; }
+.code-window-body .c-str { color: #c3e88d; }
+.code-window-body .c-num { color: #f78c6c; }
+.code-window-body .c-cm { color: #546e7a; }
+.code-window-body .c-op { color: #89ddff; }
+.code-window-body .c-cls { color: #ffcb6b; }
+.code-window-body .c-self { color: #f07178; }
+.code-window-body .c-dec { color: #c792ea; }
+.code-window-body .c-par { color: #89ddff; }
+
+/* Info grid */
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--sp-md);
+}
+
+.info-cell {
+  padding: var(--sp-md) var(--sp-lg);
+  border-radius: var(--r-md);
+}
+
+.detail-band.dark .info-cell { background: var(--surface-dark-elevated); }
+.detail-band.cream .info-cell,
+.detail-band.canvas .info-cell { background: var(--canvas); border: 1px solid var(--hairline); }
+
+.info-cell-label {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.detail-band.dark .info-cell-label { color: var(--on-dark-soft); }
+.detail-band.cream .info-cell-label,
+.detail-band.canvas .info-cell-label { color: var(--muted-soft); }
+
+.info-cell-value {
+  font-family: var(--font-code);
+  font-size: 14px;
+}
+
+.detail-band.dark .info-cell-value { color: var(--primary); }
+.detail-band.cream .info-cell-value,
+.detail-band.canvas .info-cell-value { color: var(--primary); }
+
+/* ===== ARCHITECTURE DIAGRAM ===== */
+.arch-diagram-band {
+  background: var(--surface-dark);
+  padding: var(--sp-section) 0;
+}
+
+.arch-diagram-card {
+  background: var(--surface-dark-soft);
+  border-radius: var(--r-xl);
+  padding: var(--sp-xxl);
+  overflow-x: auto;
+}
+
+.arch-diagram-card svg {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  height: auto;
+}
+
+/* ===== DATA STRUCTURES SECTION ===== */
+.data-table-wrapper {
+  overflow-x: auto;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--hairline);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.data-table thead {
+  background: var(--surface-cream-strong);
+}
+
+.data-table th {
+  padding: var(--sp-sm) var(--sp-lg);
+  text-align: left;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.data-table td {
+  padding: var(--sp-sm) var(--sp-lg);
+  border-bottom: 1px solid var(--hairline-soft);
+  color: var(--body);
+  vertical-align: top;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table .mono {
+  font-family: var(--font-code);
+  font-size: 13px;
+  color: var(--primary);
+}
+
+/* ===== CALLOUT ===== */
+.callout-coral {
+  background: var(--primary);
+  border-radius: var(--r-lg);
+  padding: var(--sp-xxl) var(--sp-xxl);
+  text-align: center;
+}
+
+.callout-coral h2 {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  color: var(--on-primary);
+  margin-bottom: var(--sp-md);
+}
+
+.callout-coral p {
+  font-size: 16px;
+  color: rgba(255,255,255,0.85);
+  max-width: 600px;
+  margin: 0 auto var(--sp-lg);
+  line-height: 1.6;
+}
+
+.callout-coral .btn-light {
+  display: inline-block;
+  padding: 12px 24px;
+  background: var(--canvas);
+  color: var(--ink);
+  border-radius: var(--r-md);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* ===== FOOTER ===== */
+.footer {
+  background: var(--surface-dark);
+  padding: 48px 0;
+}
+
+.footer-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-brand {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--on-dark);
+  letter-spacing: -0.2px;
+}
+
+.footer-note {
+  font-size: 13px;
+  color: var(--on-dark-soft);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1024px) {
+  .hero-grid { grid-template-columns: 1fr; gap: var(--sp-xl); }
+  .detail-two-col { grid-template-columns: 1fr; }
+  .problem-grid { grid-template-columns: 1fr 1fr; }
+  .display-xl { font-size: 40px; }
+  .display-lg { font-size: 32px; }
+  .layer-card { grid-template-columns: 140px 1fr; }
+}
+
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .problem-grid { grid-template-columns: 1fr; }
+  .info-grid { grid-template-columns: 1fr; }
+  .layer-card { grid-template-columns: 1fr; }
+  .layer-badge { padding: var(--sp-lg); flex-direction: row; gap: var(--sp-md); }
+  .layer-badge .layer-num { font-size: 32px; }
+  .display-xl { font-size: 32px; }
+  .display-lg { font-size: 28px; }
+  .display-md { font-size: 24px; }
+  .band { padding: var(--sp-xxl) 0; }
+  .hero-band { padding: var(--sp-xxl) 0 var(--sp-xl); }
+  .container { padding: 0 var(--sp-md); }
+  .hero-meta { flex-direction: column; gap: var(--sp-sm); }
+  .arch-diagram-card { padding: var(--sp-lg); }
+}
+
+/* ===== SECTION DIVIDER ===== */
+.section-anchor {
+  scroll-margin-top: 80px;
+}
+
+/* ===== TRIGGER TABLE ===== */
+.trigger-box {
+  border-radius: var(--r-lg);
+  padding: var(--sp-lg);
+  margin-top: var(--sp-lg);
+}
+
+.detail-band.dark .trigger-box {
+  background: var(--surface-dark-elevated);
+}
+
+.detail-band.cream .trigger-box,
+.detail-band.canvas .trigger-box {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+}
+
+.trigger-box h4 {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: var(--sp-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+}
+
+.detail-band.dark .trigger-box h4 { color: var(--on-dark); }
+
+.trigger-box .trigger-cond {
+  font-family: var(--font-code);
+  font-size: 13px;
+  line-height: 1.7;
+  padding: var(--sp-sm);
+  border-radius: var(--r-sm);
+}
+
+.detail-band.dark .trigger-box .trigger-cond {
+  background: var(--surface-dark-soft);
+  color: var(--on-dark-soft);
+}
+
+.detail-band.cream .trigger-box .trigger-cond,
+.detail-band.canvas .trigger-box .trigger-cond {
+  background: var(--surface-soft);
+  color: var(--body);
+}
+
+/* ===== FLOW COMPARISON ===== */
+.flow-comparison {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-md);
+  margin-top: var(--sp-xxl);
+}
+
+.flow-col {
+  border-radius: var(--r-lg);
+  padding: var(--sp-lg);
+  text-align: center;
+}
+
+.flow-col.fc-dark { background: var(--surface-dark); }
+.flow-col.fc-coral { background: var(--primary); }
+.flow-col.fc-cream { background: var(--surface-card); border: 1px solid var(--hairline); }
+
+.flow-col h4 {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: var(--sp-xs);
+}
+
+.fc-dark h4 { color: var(--on-dark); }
+.fc-coral h4 { color: var(--on-primary); }
+.fc-cream h4 { color: var(--ink); }
+
+.flow-col .flow-when {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.fc-dark .flow-when { color: var(--on-dark-soft); }
+.fc-coral .flow-when { color: rgba(255,255,255,0.75); }
+.fc-cream .flow-when { color: var(--muted); }
+
+.flow-col .flow-emoji {
+  font-size: 28px;
+  margin-bottom: var(--sp-sm);
+}
+
+/* ===== MISC ===== */
+.mt-section { margin-top: var(--sp-section); }
+.mt-xxl { margin-top: var(--sp-xxl); }
+.mt-xl { margin-top: var(--sp-xl); }
+.mt-lg { margin-top: var(--sp-lg); }
+.mt-md { margin-top: var(--sp-md); }
+.mb-lg { margin-bottom: var(--sp-lg); }
+.mb-xl { margin-bottom: var(--sp-xl); }
+.text-muted { color: var(--muted); }
+.text-primary { color: var(--primary); }
+
+.inline-code {
+  font-family: var(--font-code);
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: var(--r-xs);
+  background: var(--surface-soft);
+  color: var(--primary);
+}
+
+.detail-band.dark .inline-code {
+  background: var(--surface-dark-elevated);
+  color: var(--primary);
+}
+</style>
+</head>
+<body>
+
+<!-- ===== TOP NAV ===== -->
+<nav class="top-nav">
+  <div class="container">
+    <div class="nav-brand">
+      <svg class="spike" viewBox="0 0 20 20" fill="none"><path d="M10 0 L12 8 L20 10 L12 12 L10 20 L8 12 L0 10 L8 8 Z" fill="#141413"/></svg>
+      nanobot 学习笔记
+    </div>
+    <ul class="nav-links">
+      <li><a href="nanobot-architecture.html">架构</a></li>
+      <li><a href="nanobot-roadmap.html">路线图</a></li>
+      <li><a href="#" class="active">对话压缩</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ===== HERO ===== -->
+<section class="hero-band">
+  <div class="container">
+    <div class="hero-grid">
+      <div>
+        <div class="hero-subtitle">Session · Context Compaction</div>
+        <h1 class="display-xl hero-title">对话压缩<br>三层防线</h1>
+        <p class="hero-desc">
+          LLM 的上下文窗口是有限的。当对话历史超过窗口容量，agent 就会"失忆"。nanobot 设计了一套三层渐进式压缩架构——从单次调用内的实时裁剪，到跨轮次的 LLM 摘要，再到空闲时的后台归档——确保对话永不丢失关键上下文。
+        </p>
+        <div class="hero-meta">
+          <div class="hero-meta-item">
+            <span class="hero-meta-label">核心模块</span>
+            <span class="hero-meta-value">3 层</span>
+          </div>
+          <div class="hero-meta-item">
+            <span class="hero-meta-label">源文件</span>
+            <span class="hero-meta-value">4 个</span>
+          </div>
+          <div class="hero-meta-item">
+            <span class="hero-meta-label">关键常量</span>
+            <span class="hero-meta-value">12+</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hero illustration: simplified flow -->
+      <div class="hero-illustration">
+        <svg class="flow-diagram" viewBox="0 0 440 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#a09d96"/>
+            </marker>
+          </defs>
+
+          <!-- Messages box -->
+          <rect x="20" y="20" width="130" height="50" rx="8" fill="#252320"/>
+          <text x="85" y="42" text-anchor="middle" class="flow-label" font-size="12">对话消息</text>
+          <text x="85" y="56" text-anchor="middle" class="flow-sublabel" font-size="9">session.messages</text>
+
+          <!-- Arrow down -->
+          <line x1="85" y1="70" x2="85" y2="100" class="flow-arrow"/>
+
+          <!-- Layer 1 -->
+          <rect x="20" y="100" width="180" height="55" rx="8" fill="#cc785c" fill-opacity="0.15" stroke="#cc785c" stroke-width="1"/>
+          <text x="110" y="122" text-anchor="middle" fill="#cc785c" font-size="11" font-weight="500">L1 · In-flight Compact</text>
+          <text x="110" y="138" text-anchor="middle" class="flow-sublabel" font-size="9">ContextGovernor</text>
+
+          <!-- Arrow down -->
+          <line x1="110" y1="155" x2="110" y2="185" class="flow-arrow"/>
+
+          <!-- Layer 2 -->
+          <rect x="20" y="185" width="180" height="55" rx="8" fill="#cc785c" fill-opacity="0.3" stroke="#cc785c" stroke-width="1"/>
+          <text x="110" y="207" text-anchor="middle" fill="#cc785c" font-size="11" font-weight="500">L2 · Token Consolidation</text>
+          <text x="110" y="223" text-anchor="middle" class="flow-sublabel" font-size="9">Consolidator</text>
+
+          <!-- Arrow down -->
+          <line x1="110" y1="240" x2="110" y2="270" class="flow-arrow"/>
+
+          <!-- Layer 3 -->
+          <rect x="20" y="270" width="180" height="50" rx="8" fill="#cc785c" fill-opacity="0.5" stroke="#cc785c" stroke-width="1"/>
+          <text x="110" y="292" text-anchor="middle" fill="#faf9f5" font-size="11" font-weight="500">L3 · AutoCompact</text>
+          <text x="110" y="305" text-anchor="middle" class="flow-sublabel" font-size="9">idle archival</text>
+
+          <!-- Right side: outputs -->
+          <line x1="200" y1="127" x2="250" y2="127" class="flow-arrow"/>
+          <rect x="250" y="107" width="170" height="40" rx="8" fill="#252320"/>
+          <text x="335" y="124" text-anchor="middle" class="flow-label" font-size="10">裁剪后发给 LLM</text>
+          <text x="335" y="138" text-anchor="middle" class="flow-sublabel" font-size="9">model-facing copy</text>
+
+          <line x1="200" y1="212" x2="250" y2="212" class="flow-arrow"/>
+          <rect x="250" y="192" width="170" height="40" rx="8" fill="#252320"/>
+          <text x="335" y="209" text-anchor="middle" class="flow-label" font-size="10">摘要 → history.jsonl</text>
+          <text x="335" y="223" text-anchor="middle" class="flow-sublabel" font-size="9">LLM summarization</text>
+
+          <line x1="200" y1="295" x2="250" y2="295" class="flow-arrow"/>
+          <rect x="250" y="275" width="170" height="40" rx="8" fill="#252320"/>
+          <text x="335" y="292" text-anchor="middle" class="flow-label" font-size="10">归档 + _last_summary</text>
+          <text x="335" y="306" text-anchor="middle" class="flow-sublabel" font-size="9">session metadata</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ===== PROBLEM: WHY COMPACTION ===== -->
+<section class="problem-band" id="why">
+  <div class="container section-anchor">
+    <div class="display-lg" style="margin-bottom: var(--sp-md);">为什么需要压缩？</div>
+    <p class="body-md text-muted" style="max-width: 640px;">
+      LLM 的上下文窗口既是记忆，也是瓶颈。nanobot 作为持久化多轮对话 agent，必须处理三个核心挑战：
+    </p>
+
+    <div class="problem-grid">
+      <div class="problem-card">
+        <div class="problem-icon red">⛔</div>
+        <h3>窗口溢出</h3>
+        <p>
+          模型有固定的 context window（如 200K tokens）。一个长对话加上工具调用结果，很容易超出限制。超出后，API 直接报错 —— agent 彻底瘫痪。
+        </p>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon amber">💸</div>
+        <h3>成本失控</h3>
+        <p>
+          即使没超限，每轮对话都把完整历史发给 LLM，token 用量线性增长。consolidation_ratio = 0.5 的设计目标是把 prompt 控制在窗口的 50% 以内。
+        </p>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon teal">🧠</div>
+        <h3>注意力稀释</h3>
+        <p>
+          即使塞得下，过长的 prompt 会让模型"注意力稀释"——关键指令被淹没在大量旧工具输出里。精简上下文反而让模型表现更好。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ===== ARCHITECTURE OVERVIEW ===== -->
+<section class="arch-band" id="architecture">
+  <div class="container section-anchor">
+    <div class="display-lg" style="margin-bottom: var(--sp-md);">三层渐进式架构</div>
+    <div class="arch-intro">
+      <p>
+        nanobot 不是一次性砍掉旧消息，而是设计了三道逐步加深的防线。每一层有不同的触发时机、压缩策略和作用范围，从"无损裁剪"到"有损摘要"逐级递进。
+      </p>
+    </div>
+
+    <div class="layer-stack">
+      <!-- Layer 1 -->
+      <div class="layer-card">
+        <div class="layer-badge l1">
+          <div class="layer-num">L1</div>
+          <div class="layer-name">实时</div>
+        </div>
+        <div class="layer-body">
+          <h3>In-flight Microcompact</h3>
+          <span class="layer-file">context_governance.py → ContextGovernor</span>
+          <p>
+            <strong>单次 LLM 调用内</strong>的实时裁剪。当 runner 即将发送请求时，ContextGovernor 检查 prompt 是否超出窗口，按策略压缩旧的工具返回结果。只影响发给模型的副本，<strong>不修改持久化历史</strong>。
+          </p>
+          <p>
+            这是最快、最安全的防线——零延迟、零 LLM 调用、完全可逆。
+          </p>
+        </div>
+      </div>
+
+      <!-- Layer 2 -->
+      <div class="layer-card">
+        <div class="layer-badge l2">
+          <div class="layer-num">L2</div>
+          <div class="layer-name">轮次间</div>
+        </div>
+        <div class="layer-body">
+          <h3>Token-budget Consolidation</h3>
+          <span class="layer-file">memory.py → Consolidator</span>
+          <p>
+            <strong>轮次之间</strong>的主动压缩。在每轮对话的前后，Consolidator 估算当前 session 的 prompt 大小。如果超过安全预算（context_window × consolidation_ratio），就把旧消息块通过 LLM 总结成摘要，写入 <span class="inline-code">history.jsonl</span>，并推进 <span class="inline-code">last_consolidated</span> 指针。
+          </p>
+          <p>
+            这是核心的"有损压缩"层——用一次廉价 LLM 调用换取大量 token 节省。
+          </p>
+        </div>
+      </div>
+
+      <!-- Layer 3 -->
+      <div class="layer-card">
+        <div class="layer-badge l3">
+          <div class="layer-num">L3</div>
+          <div class="layer-name">空闲</div>
+        </div>
+        <div class="layer-body">
+          <h3>AutoCompact Idle Archival</h3>
+          <span class="layer-file">autocompact.py → AutoCompact</span>
+          <p>
+            <strong>会话空闲时</strong>的后台归档。当一个 session 超过 <span class="inline-code">session_ttl_minutes</span>（默认 15 分钟）没有新消息，AutoCompact 自动触发：把大部分历史归档为摘要，只保留最近 8 条消息。下次用户回来时，摘要作为 <span class="inline-code">[Archived Context Summary]</span> 注入到 system prompt 中。
+          </p>
+          <p>
+            这是最激进的压缩——为长期闲置的 session 释放存储和 token 开销。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Flow comparison -->
+    <div class="flow-comparison">
+      <div class="flow-col fc-dark">
+        <div class="flow-emoji">⚡</div>
+        <h4>L1 · 实时裁剪</h4>
+        <div class="flow-when">发生在每次 LLM 调用前<br>零成本 · 不修改历史<br>裁剪工具输出 + 截断历史</div>
+      </div>
+      <div class="flow-col fc-coral">
+        <div class="flow-emoji">🔄</div>
+        <h4>L2 · 轮次压缩</h4>
+        <div class="flow-when">发生在对话轮次前后<br>1 次 LLM 调用 · 修改 session<br>摘要写入 history.jsonl</div>
+      </div>
+      <div class="flow-col fc-cream">
+        <div class="flow-emoji">💤</div>
+        <h4>L3 · 空闲归档</h4>
+        <div class="flow-when">发生在 session 空闲 15min 后<br>后台异步 · 硬截断<br>摘要注入 system prompt</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ===== L1 DETAIL ===== -->
+<section class="detail-band dark" id="layer1">
+  <div class="container section-anchor">
+    <div class="detail-header">
+      <span class="badge badge-dark">Layer 1</span>
+      <h2>In-flight Microcompact</h2>
+      <p>在单次 LLM 调用内实时裁剪上下文。不修改持久化历史，只影响发给模型的副本。</p>
+    </div>
+
+    <div class="detail-two-col">
+      <div>
+        <div class="title-md mb-lg" style="color: var(--on-dark);">工作流程</div>
+        <ol class="step-list">
+          <li>
+            <div>
+              <div class="step-title">清理异常消息</div>
+              <div class="step-desc">strip_placeholder_assistant_messages() 移除压缩占位符；strip_malformed_tool_calls() 清除无效工具调用。</div>
+            </div>
+          </li>
+          <li>
+            <div>
+              <div class="step-title">修复消息依赖</div>
+              <div class="step-desc">drop_orphan_tool_results() 删除无主工具结果；backfill_missing_tool_results() 为缺失结果补占位符。</div>
+            </div>
+          </li>
+          <li>
+            <div>
+              <div class="step-title">裁剪工具输出</div>
+              <div class="step-desc">apply_tool_result_budget() 对超长工具结果截断或持久化到磁盘。然后 compact_inflight_overflow() 把旧的 COMPACTABLE_TOOLS 结果替换为摘要句。</div>
+            </div>
+          </li>
+          <li>
+            <div>
+              <div class="step-title">截断历史</div>
+              <div class="step-desc">snip_history() 从历史头部按 token 预算截断，保证以 user 消息开头且不破坏 tool_call 边界。</div>
+            </div>
+          </li>
+        </ol>
+
+        <div class="trigger-box mt-lg">
+          <h4>⚡ 触发条件</h4>
+          <div class="trigger-cond">
+            每次 AgentRunner 即将调用 LLM 时自动执行<br>
+            estimated_tokens > input_budget<br>
+            input_budget = context_window - max_tokens - 1024
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="code-window">
+          <div class="code-window-header">
+            <span class="code-dot red"></span>
+            <span class="code-dot yellow"></span>
+            <span class="code-dot green"></span>
+            <span class="code-window-title">context_governance.py</span>
+          </div>
+          <div class="code-window-body">
+<pre><span class="c-cm"># ContextGovernor 的核心管道</span>
+<span class="c-kw">def</span> <span class="c-fn">prepare_for_model</span>(<span class="c-self">self</span>, config, messages,
+                      compacted_ids):
+    updated <span class="c-op">=</span> <span class="c-self">self</span>.strip_placeholder_assistant_messages(messages)
+    updated <span class="c-op">=</span> <span class="c-self">self</span>.strip_malformed_tool_calls(updated)
+    updated <span class="c-op">=</span> <span class="c-self">self</span>.drop_orphan_tool_results(updated)
+    updated <span class="c-op">=</span> <span class="c-self">self</span>.backfill_missing_tool_results(updated)
+    updated <span class="c-op">=</span> <span class="c-self">self</span>.apply_tool_result_budget(config, updated)
+    updated <span class="c-op">=</span> <span class="c-self">self</span>.compact_inflight_overflow(
+        config, updated, compacted_ids)
+    updated <span class="c-op">=</span> <span class="c-self">self</span>.snip_history(config, updated)
+    updated <span class="c-op">=</span> <span class="c-self">self</span>.drop_orphan_tool_results(updated)
+    <span class="c-kw">return</span> <span class="c-self">self</span>.backfill_missing_tool_results(updated)
+
+<span class="c-cm"># 可压缩的工具列表</span>
+<span class="c-cls">COMPACTABLE_TOOLS</span> <span class="c-op">=</span> frozenset({
+    <span class="c-str">"read_file"</span>, <span class="c-str">"exec"</span>, <span class="c-str">"grep"</span>,
+    <span class="c-str">"find_files"</span>, <span class="c-str">"web_search"</span>,
+    <span class="c-str">"web_fetch"</span>, <span class="c-str">"list_dir"</span>,
+    <span class="c-str">"list_exec_sessions"</span>,
+})
+
+<span class="c-cm"># 保留最近 10 个工具结果不压缩</span>
+<span class="c-cls">MICROCOMPACT_KEEP_RECENT</span> <span class="c-op">=</span> <span class="c-num">10</span>
+
+<span class="c-cm"># 压缩目标：预算的 85%</span>
+<span class="c-cls">INFLIGHT_COMPACT_TARGET_RATIO</span> <span class="c-op">=</span> <span class="c-num">0.85</span></pre>
+          </div>
+        </div>
+
+        <div class="info-grid mt-lg">
+          <div class="info-cell">
+            <div class="info-cell-label">修改范围</div>
+            <div class="info-cell-value">仅 model-facing copy</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">LLM 调用</div>
+            <div class="info-cell-value">0 次（纯本地操作）</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">保留最近</div>
+            <div class="info-cell-value">KEEP_RECENT = 10</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">安全缓冲</div>
+            <div class="info-cell-value">SNIP_SAFETY = 1024</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ===== L2 DETAIL ===== -->
+<section class="detail-band cream" id="layer2">
+  <div class="container section-anchor">
+    <div class="detail-header">
+      <span class="badge badge-coral">Layer 2</span>
+      <h2>Token-budget Consolidation</h2>
+      <p>在轮次之间使用 LLM 摘要旧消息，推进 last_consolidated 指针，实现"有损但高质量"的压缩。</p>
+    </div>
+
+    <div class="detail-two-col">
+      <div>
+        <div class="title-md mb-lg">工作流程</div>
+        <ol class="step-list">
+          <li>
+            <div>
+              <div class="step-title">估算 token 用量</div>
+              <div class="step-desc">estimate_session_prompt_tokens() 构建完整 probe 请求（包含 system prompt、历史、工具定义），通过 provider 计数器或 tiktoken 估算总 token 数。</div>
+            </div>
+          </li>
+          <li>
+            <div>
+              <div class="step-title">检查是否超预算</div>
+              <div class="step-desc">如果 estimated &lt; budget（context_window - max_tokens - 1024），无需压缩。否则设定 target = budget × consolidation_ratio（默认 0.5），开始压缩循环。</div>
+            </div>
+          </li>
+          <li>
+            <div>
+              <div class="step-title">选择压缩边界</div>
+              <div class="step-desc">pick_consolidation_boundary() 从 last_consolidated 开始遍历，在 user 消息边界处切割，确保切割的 token 量 ≥ tokens_to_remove。</div>
+            </div>
+          </li>
+          <li>
+            <div>
+              <div class="step-title">LLM 摘要归档</div>
+              <div class="step-desc">archive() 将被切消息格式化后发给 LLM，用 consolidator_archive.md 模板提取关键事实（SNIP 标准），摘要写入 history.jsonl。失败则 raw_archive() 原文转储。</div>
+            </div>
+          </li>
+          <li>
+            <div>
+              <div class="step-title">推进指针 & 循环</div>
+              <div class="step-desc">session.last_consolidated = end_idx，保存 session。如果 estimated 仍超 target，继续下一轮（最多 5 轮）。最终将 _last_summary 存入 metadata。</div>
+            </div>
+          </li>
+        </ol>
+
+        <div class="trigger-box mt-lg">
+          <h4>🔄 触发条件</h4>
+          <div class="trigger-cond">
+            对话轮次前：loop.py _state_compact() 阶段<br>
+            对话轮次后：background task 异步执行<br>
+            条件：estimated_tokens >= input_budget
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="code-window">
+          <div class="code-window-header">
+            <span class="code-dot red"></span>
+            <span class="code-dot yellow"></span>
+            <span class="code-dot green"></span>
+            <span class="code-window-title">memory.py — Consolidator</span>
+          </div>
+          <div class="code-window-body">
+<pre><span class="c-kw">class</span> <span class="c-cls">Consolidator</span>:
+    <span class="c-cls">_MAX_CONSOLIDATION_ROUNDS</span> <span class="c-op">=</span> <span class="c-num">5</span>
+    <span class="c-cls">_SAFETY_BUFFER</span> <span class="c-op">=</span> <span class="c-num">1024</span>
+
+    <span class="c-kw">async def</span> <span class="c-fn">maybe_consolidate_by_tokens</span>(<span class="c-self">self</span>,
+        session, *, runtime, replay_max_messages):
+        <span class="c-cm"># 1. 先处理 replay 窗口溢出</span>
+        <span class="c-kw">await</span> <span class="c-self">self</span>._consolidate_replay_overflow(...)
+
+        <span class="c-cm"># 2. 估算当前 prompt token</span>
+        estimated, source <span class="c-op">=</span> <span class="c-self">self</span>.estimate_session_prompt_tokens(
+            session, runtime<span class="c-op">=</span>runtime)
+
+        <span class="c-cm"># 3. 循环压缩直到 fit</span>
+        budget <span class="c-op">=</span> <span class="c-self">self</span>._input_token_budget(runtime)
+        target <span class="c-op">=</span> <span class="c-kw">int</span>(budget <span class="c-op">*</span> <span class="c-self">self</span>.consolidation_ratio)
+
+        <span class="c-kw">for</span> round_num <span class="c-kw">in</span> <span class="c-kw">range</span>(<span class="c-num">5</span>):
+            <span class="c-kw">if</span> estimated <span class="c-op">&lt;=</span> target:
+                <span class="c-kw">break</span>
+            boundary <span class="c-op">=</span> <span class="c-self">self</span>.pick_consolidation_boundary(
+                session, max(<span class="c-num">1</span>, estimated <span class="c-op">-</span> target))
+            chunk <span class="c-op">=</span> session.messages[lc:end_idx]
+            summary <span class="c-op">=</span> <span class="c-kw">await</span> <span class="c-self">self</span>.archive(
+                chunk, runtime<span class="c-op">=</span>runtime)
+            session.last_consolidated <span class="c-op">=</span> end_idx
+            sessions.save(session)</pre>
+          </div>
+        </div>
+
+        <div class="info-grid mt-lg">
+          <div class="info-cell">
+            <div class="info-cell-label">压缩比</div>
+            <div class="info-cell-value">consolidation_ratio = 0.5</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">最大轮次</div>
+            <div class="info-cell-value">MAX_ROUNDS = 5</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">摘要上限</div>
+            <div class="info-cell-value">SUMMARY_MAX = 8,000 chars</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">降级兜底</div>
+            <div class="info-cell-value">raw_archive (16K chars)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Consolidator archive template -->
+    <div class="mt-xxl">
+      <div class="title-md mb-lg">摘要模板：SNIP 标准</div>
+      <p class="body-md text-muted mb-xl" style="max-width: 720px;">
+        LLM 用 <span class="inline-code">consolidator_archive.md</span> 模板对被归档的消息进行评估。只有满足 SNIP 四项标准的事实才值得保留：
+      </p>
+      <div class="data-table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>标准</th>
+              <th>含义</th>
+              <th>示例</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>S</strong>ignal</td>
+              <td>如果遗忘，用户需要重复说明吗？</td>
+              <td>用户偏好、纠正过的错误</td>
+            </tr>
+            <tr>
+              <td><strong>N</strong>ovel</td>
+              <td>不是同一段对话中其他事实的重述</td>
+              <td>新发现的技术约束</td>
+            </tr>
+            <tr>
+              <td><strong>I</strong>mportant</td>
+              <td>能防止返工或记录偏好/规则</td>
+              <td>项目架构决策</td>
+            </tr>
+            <tr>
+              <td><strong>P</strong>ersistent</td>
+              <td>2 周后仍然相关</td>
+              <td>配置参数、API 密钥位置</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="body-sm text-muted mt-md">
+        每条事实标记为 <span class="inline-code">[permanent]</span>、<span class="inline-code">[durable]</span>、<span class="inline-code">[ephemeral]</span>、<span class="inline-code">[correction]</span> 或 <span class="inline-code">[skip]</span>。
+        最终由 Dream 阶段进一步整合到 SOUL.md / USER.md / MEMORY.md 等持久文件中。
+      </p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ===== L3 DETAIL ===== -->
+<section class="detail-band canvas" id="layer3">
+  <div class="container section-anchor">
+    <div class="detail-header">
+      <span class="badge badge-cream">Layer 3</span>
+      <h2>AutoCompact 空闲归档</h2>
+      <p>当 session 空闲超过阈值，自动在后台压缩全部历史，只保留最近尾部。</p>
+    </div>
+
+    <div class="detail-two-col">
+      <div>
+        <div class="title-md mb-lg">工作流程</div>
+        <ol class="step-list">
+          <li>
+            <div>
+              <div class="step-title">检测空闲 session</div>
+              <div class="step-desc">AgentLoop 的消息总线每次 1 秒超时时，调用 auto_compact.check_expired()。遍历所有 session，检查 updated_at 是否超过 session_ttl_minutes（默认 15 分钟）。跳过活跃 session 和内部 session（dream: 前缀）。</div>
+            </div>
+          </li>
+          <li>
+            <div>
+              <div class="step-title">检查可压缩内容</div>
+              <div class="step-desc">_has_compactable_idle_tail() 构建一个 probe Session，对未压缩尾部调用 retain_recent_legal_suffix(8)，检查是否有消息可以被移除。</div>
+            </div>
+          </li>
+          <li>
+            <div>
+              <div class="step-title">后台异步归档</div>
+              <div class="step-desc">compact_idle_session() 在 consolidation lock 下执行：分离出要保留的 8 条消息和要归档的旧消息。调用 archive() 让 LLM 对全部消息（包括保留的）生成摘要，但只 raw-dump 被移除的。</div>
+            </div>
+          </li>
+          <li>
+            <div>
+              <div class="step-title">注入摘要上下文</div>
+              <div class="step-desc">摘要存入 session.metadata["_last_summary"]。下次用户回来时，prepare_session() 读取摘要，ContextBuilder 把它作为 "[Archived Context Summary]" 注入 system prompt。</div>
+            </div>
+          </li>
+        </ol>
+
+        <div class="trigger-box mt-lg">
+          <h4>💤 触发条件</h4>
+          <div class="trigger-cond">
+            AgentLoop 消息总线 1s 超时回调中<br>
+            (now - session.updated_at) >= session_ttl_minutes × 60<br>
+            且 session 不在活跃队列中<br>
+            且有可压缩的未归档消息
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="code-window">
+          <div class="code-window-header">
+            <span class="code-dot red"></span>
+            <span class="code-dot yellow"></span>
+            <span class="code-dot green"></span>
+            <span class="code-window-title">autocompact.py — AutoCompact</span>
+          </div>
+          <div class="code-window-body">
+<pre><span class="c-kw">class</span> <span class="c-cls">AutoCompact</span>:
+    <span class="c-cls">_RECENT_SUFFIX_MESSAGES</span> <span class="c-op">=</span> <span class="c-num">8</span>
+
+    <span class="c-kw">def</span> <span class="c-fn">check_expired</span>(<span class="c-self">self</span>, schedule_bg,
+                      resolve_runtime, active_keys):
+        <span class="c-cm"># 遍历所有 session</span>
+        <span class="c-kw">for</span> info <span class="c-kw">in</span> <span class="c-self">self</span>.sessions.list_sessions():
+            key <span class="c-op">=</span> info[<span class="c-str">"key"</span>]
+            <span class="c-kw">if</span> key <span class="c-kw">in</span> active_keys:
+                <span class="c-kw">continue</span>
+            <span class="c-kw">if</span> <span class="c-self">self</span>._is_expired(info[<span class="c-str">"updated_at"</span>]):
+                <span class="c-kw">if</span> <span class="c-self">self</span>._has_compactable_idle_tail(key):
+                    schedule_bg(<span class="c-self">self</span>._archive(key))
+
+    <span class="c-kw">def</span> <span class="c-fn">prepare_session</span>(<span class="c-self">self</span>, session, key):
+        <span class="c-cm"># 用户回来时注入摘要</span>
+        entry <span class="c-op">=</span> <span class="c-self">self</span>._summaries.pop(key, <span class="c-kw">None</span>)
+        <span class="c-kw">if</span> entry:
+            <span class="c-kw">return</span> session, <span class="c-self">self</span>._format_summary(
+                entry[<span class="c-num">0</span>], entry[<span class="c-num">1</span>])
+
+        <span class="c-cm"># 冷启动：从 metadata 恢复</span>
+        meta <span class="c-op">=</span> session.metadata.get(<span class="c-str">"_last_summary"</span>)
+        <span class="c-kw">if</span> <span class="c-kw">isinstance</span>(meta, <span class="c-kw">dict</span>):
+            <span class="c-kw">return</span> session, <span class="c-self">self</span>._format_summary(
+                meta[<span class="c-str">"text"</span>], ...)
+        <span class="c-kw">return</span> session, <span class="c-kw">None</span></pre>
+          </div>
+        </div>
+
+        <div class="info-grid mt-lg">
+          <div class="info-cell">
+            <div class="info-cell-label">空闲阈值</div>
+            <div class="info-cell-value">session_ttl = 15 min</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">保留消息</div>
+            <div class="info-cell-value">RECENT_SUFFIX = 8</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">摘要存储</div>
+            <div class="info-cell-value">metadata._last_summary</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">注入位置</div>
+            <div class="info-cell-value">system prompt 末尾</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ===== FULL ARCHITECTURE DIAGRAM ===== -->
+<section class="arch-diagram-band" id="diagram">
+  <div class="container section-anchor">
+    <div class="display-lg" style="color: var(--on-dark); margin-bottom: var(--sp-md);">完整数据流</div>
+    <p style="color: var(--on-dark-soft); font-size: 16px; margin-bottom: var(--sp-xxl); max-width: 640px;">
+      从用户消息到入 LLM 请求，每条消息经过的完整路径。三层压缩机制在不同时间点介入，协同保障上下文可控。
+    </p>
+
+    <div class="arch-diagram-card">
+      <svg viewBox="0 0 960 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow2" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#a09d96"/>
+          </marker>
+          <marker id="arrow-coral" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#cc785c"/>
+          </marker>
+        </defs>
+
+        <style>
+          .d-label { fill: #faf9f5; font-family: "Segoe UI", sans-serif; font-size: 12px; font-weight: 500; }
+          .d-sub   { fill: #a09d96; font-family: "Segoe UI", sans-serif; font-size: 10px; }
+          .d-small { fill: #a09d96; font-family: "Cascadia Code", monospace; font-size: 9px; }
+          .d-title { fill: #faf9f5; font-family: "Microsoft YaHei", sans-serif; font-size: 14px; font-weight: 600; }
+          .d-arrow { stroke: #a09d96; stroke-width: 1.5; fill: none; marker-end: url(#arrow2); }
+          .d-arrow-coral { stroke: #cc785c; stroke-width: 1.5; fill: none; marker-end: url(#arrow-coral); }
+          .d-box   { rx: 8; ry: 8; }
+        </style>
+
+        <!-- ===== ROW 1: Input ===== -->
+        <rect x="30" y="30" width="140" height="50" class="d-box" fill="#252320"/>
+        <text x="100" y="52" text-anchor="middle" class="d-label">用户消息</text>
+        <text x="100" y="66" text-anchor="middle" class="d-small">InboundMessage</text>
+
+        <line x1="170" y1="55" x2="220" y2="55" class="d-arrow"/>
+
+        <rect x="220" y="30" width="200" height="50" class="d-box" fill="#252320"/>
+        <text x="320" y="52" text-anchor="middle" class="d-label">Session 存储</text>
+        <text x="320" y="66" text-anchor="middle" class="d-small">session.messages.append(msg)</text>
+
+        <line x1="420" y1="55" x2="470" y2="55" class="d-arrow"/>
+
+        <rect x="470" y="30" width="200" height="50" class="d-box" fill="#252320"/>
+        <text x="570" y="52" text-anchor="middle" class="d-label">获取历史</text>
+        <text x="570" y="66" text-anchor="middle" class="d-small">session.get_history(max_messages)</text>
+
+        <!-- ===== ROW 2: Pre-turn consolidation ===== -->
+        <line x1="320" y1="80" x2="320" y2="120" class="d-arrow-coral"/>
+
+        <rect x="180" y="120" width="280" height="70" class="d-box" fill="none" stroke="#cc785c" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <text x="320" y="140" text-anchor="middle" class="d-title" fill="#cc785c">L2 轮次前压缩</text>
+        <text x="320" y="156" text-anchor="middle" class="d-sub">maybe_consolidate_by_tokens()</text>
+        <text x="320" y="172" text-anchor="middle" class="d-small">if estimated > budget → archive(chunk)</text>
+
+        <!-- Arrow from L2 to history.jsonl -->
+        <line x1="460" y1="155" x2="530" y2="155" class="d-arrow-coral"/>
+        <rect x="530" y="130" width="160" height="50" class="d-box" fill="#cc785c" fill-opacity="0.15" stroke="#cc785c" stroke-width="1"/>
+        <text x="610" y="152" text-anchor="middle" class="d-label" fill="#cc785c">history.jsonl</text>
+        <text x="610" y="166" text-anchor="middle" class="d-small">LLM 摘要存储</text>
+
+        <!-- ===== ROW 3: Context building ===== -->
+        <line x1="570" y1="80" x2="570" y2="230" class="d-arrow"/>
+
+        <rect x="430" y="230" width="280" height="70" class="d-box" fill="#252320"/>
+        <text x="570" y="252" text-anchor="middle" class="d-label">构建 LLM 请求</text>
+        <text x="570" y="268" text-anchor="middle" class="d-small">ContextBuilder.build_messages()</text>
+        <text x="570" y="282" text-anchor="middle" class="d-small">system_prompt + history + current_msg</text>
+
+        <!-- Summary injection arrow -->
+        <rect x="30" y="240" width="200" height="50" class="d-box" fill="#252320"/>
+        <text x="130" y="260" text-anchor="middle" class="d-label" fill="#cc785c">[Archived Summary]</text>
+        <text x="130" y="275" text-anchor="middle" class="d-small">from L3 _last_summary</text>
+        <line x1="230" y1="265" x2="430" y2="265" class="d-arrow-coral"/>
+
+        <!-- ===== ROW 4: Context Governance (L1) ===== -->
+        <line x1="570" y1="300" x2="570" y2="340" class="d-arrow"/>
+
+        <rect x="360" y="340" width="420" height="90" class="d-box" fill="none" stroke="#cc785c" stroke-width="2"/>
+        <text x="570" y="362" text-anchor="middle" class="d-title" fill="#cc785c">L1 In-flight Compact</text>
+        <text x="570" y="380" text-anchor="middle" class="d-sub">ContextGovernor.prepare_for_model()</text>
+
+        <!-- L1 sub-steps -->
+        <rect x="375" y="390" width="115" height="28" rx="4" fill="#252320"/>
+        <text x="432" y="408" text-anchor="middle" class="d-small" fill="#faf9f5">compact_inflight</text>
+
+        <rect x="500" y="390" width="90" height="28" rx="4" fill="#252320"/>
+        <text x="545" y="408" text-anchor="middle" class="d-small" fill="#faf9f5">snip_history</text>
+
+        <rect x="600" y="390" width="165" height="28" rx="4" fill="#252320"/>
+        <text x="682" y="408" text-anchor="middle" class="d-small" fill="#faf9f5">backfill_tool_results</text>
+
+        <!-- ===== ROW 5: LLM Call ===== -->
+        <line x1="570" y1="430" x2="570" y2="465" class="d-arrow"/>
+
+        <rect x="430" y="465" width="280" height="45" class="d-box" fill="#cc785c"/>
+        <text x="570" y="490" text-anchor="middle" class="d-label" fill="#ffffff" font-size="13">→ LLM API 调用 ←</text>
+
+        <!-- ===== SIDE: L3 AutoCompact ===== -->
+        <rect x="760" y="120" width="180" height="130" class="d-box" fill="none" stroke="#a09d96" stroke-width="1" stroke-dasharray="4 3"/>
+        <text x="850" y="142" text-anchor="middle" class="d-title" fill="#a09d96">L3 空闲归档</text>
+        <text x="850" y="160" text-anchor="middle" class="d-sub">AutoCompact</text>
+        <text x="850" y="178" text-anchor="middle" class="d-small">check_expired()</text>
+        <text x="850" y="194" text-anchor="middle" class="d-small">compact_idle_session()</text>
+        <text x="850" y="210" text-anchor="middle" class="d-small">→ _last_summary</text>
+        <text x="850" y="234" text-anchor="middle" class="d-small">每 1s bus timeout 检查</text>
+
+        <!-- L3 arrow to summary -->
+        <line x1="760" y1="210" x2="690" y2="155" class="d-arrow" stroke-dasharray="4 3"/>
+      </svg>
+    </div>
+  </div>
+</section>
+
+
+<!-- ===== KEY DATA STRUCTURES ===== -->
+<section class="detail-band canvas" id="data">
+  <div class="container section-anchor">
+    <div class="display-lg" style="margin-bottom: var(--sp-md);">关键数据结构</div>
+    <p class="body-md text-muted mb-xl" style="max-width: 720px;">
+      理解压缩机制的核心在于理解 Session 对象上的几个关键字段，以及它们如何协同工作。
+    </p>
+
+    <div class="data-table-wrapper mb-xl">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 220px;">字段 / 常量</th>
+            <th style="width: 120px;">位置</th>
+            <th>说明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">session.messages</td>
+            <td>Session</td>
+            <td>完整的消息列表。新消息 append 到末尾，旧消息通过 last_consolidated 指针标记为"已归档"但仍保留在列表中（L2），或被 AutoCompact 直接移除（L3）。</td>
+          </tr>
+          <tr>
+            <td class="mono">session.last_consolidated</td>
+            <td>Session</td>
+            <td>整数指针。指向 messages 列表中第一条"未归档"消息的索引。L2 压缩时向前推进此指针。get_history() 只返回指针之后的消息。</td>
+          </tr>
+          <tr>
+            <td class="mono">metadata._last_summary</td>
+            <td>Session.metadata</td>
+            <td>字典 {"text": "摘要内容", "last_active": "ISO时间"}。由 L2/L3 写入。prepare_session() 读取后注入 system prompt。进程重启后仍可从 JSONL 文件恢复。</td>
+          </tr>
+          <tr>
+            <td class="mono">history.jsonl</td>
+            <td>workspace/memory/</td>
+            <td>追加写入的 JSONL 文件。每条记录 {cursor, timestamp, content, session_key}。L2 的 archive() 写入 LLM 摘要，失败时 raw_archive() 写入原文转储。Dream 周期性消化此文件。</td>
+          </tr>
+          <tr>
+            <td class="mono">compacted_tool_call_ids</td>
+            <td>AgentRunner</td>
+            <td>set[str]。一次 agent 执行期间追踪哪些 tool_call_id 已被 L1 压缩。避免重复压缩。ContextGovernor 读写此集合。</td>
+          </tr>
+          <tr>
+            <td class="mono">consolidation_ratio</td>
+            <td>Config</td>
+            <td>浮点数，默认 0.5。L2 的 target = budget × ratio。值越小，压缩越激进（保留更少历史）。范围 [0.1, 0.95]。</td>
+          </tr>
+          <tr>
+            <td class="mono">FILE_MAX_MESSAGES</td>
+            <td>session/manager.py</td>
+            <td>= 2000。session 文件的硬上限。enforce_file_cap() 在超出时触发，归档超出部分后截断。这是物理存储的保护机制。</td>
+          </tr>
+          <tr>
+            <td class="mono">replay_max_messages</td>
+            <td>Consolidator</td>
+            <td>基于 context_window_tokens 计算的自适应回放窗口。= min(2000, max(120, context_window / 100))。超出的消息通过 _consolidate_replay_overflow() 归档。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Code entry points -->
+    <div class="title-md mb-lg">代码入口速查</div>
+    <div class="data-table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 240px;">入口</th>
+            <th style="width: 200px;">调用者</th>
+            <th>作用</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">ContextGovernor<br>.prepare_for_model()</td>
+            <td>AgentRunner.run()</td>
+            <td>L1 入口。每次 LLM 调用前执行完整的消息清理和裁剪管道。</td>
+          </tr>
+          <tr>
+            <td class="mono">Consolidator<br>.maybe_consolidate_by_tokens()</td>
+            <td>AgentLoop 轮次前后</td>
+            <td>L2 入口。检查 token 预算并循环压缩。轮次前同步执行，轮次后异步执行。</td>
+          </tr>
+          <tr>
+            <td class="mono">Consolidator<br>.archive()</td>
+            <td>L2 / L3 内部</td>
+            <td>核心的 LLM 摘要函数。格式化消息 → LLM 调用 → 写入 history.jsonl。</td>
+          </tr>
+          <tr>
+            <td class="mono">AutoCompact<br>.check_expired()</td>
+            <td>AgentLoop 消息总线超时</td>
+            <td>L3 入口。扫描所有 session，对空闲的调度 _archive() 后台任务。</td>
+          </tr>
+          <tr>
+            <td class="mono">AutoCompact<br>.prepare_session()</td>
+            <td>AgentLoop 轮次开始</td>
+            <td>L3 出口。检查是否有待注入的归档摘要，返回 (session, summary)。</td>
+          </tr>
+          <tr>
+            <td class="mono">Session<br>.get_history()</td>
+            <td>ContextBuilder</td>
+            <td>返回 last_consolidated 之后的消息，按 max_messages 和 max_tokens 裁剪。</td>
+          </tr>
+          <tr>
+            <td class="mono">Session<br>.retain_recent_legal_suffix()</td>
+            <td>AutoCompact / enforce_file_cap</td>
+            <td>保留合法的最近尾部（user 消息对齐 + tool_call 边界完整），返回被丢弃的消息。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+
+<!-- ===== CALLOUT ===== -->
+<section class="band" style="padding: var(--sp-xxl) 0 var(--sp-section);">
+  <div class="container">
+    <div class="callout-coral">
+      <h2>设计精髓</h2>
+      <p>
+        三层压缩的本质是<strong>空间换时间，摘要换原文</strong>。L1 不丢信息（只裁剪副本），L2 有损但高质量（LLM 摘要），L3 最激进但只针对冷数据。每一层都有降级策略——LLM 失败时 raw_archive()，确保消息永不丢失。
+      </p>
+      <a href="nanobot-roadmap.html" class="btn-light">← 返回路线图</a>
+    </div>
+  </div>
+</section>
+
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <svg style="width: 16px; height: 16px; vertical-align: -2px; margin-right: 4px;" viewBox="0 0 20 20" fill="none"><path d="M10 0 L12 8 L20 10 L12 12 L10 20 L8 12 L0 10 L8 8 Z" fill="#faf9f5"/></svg>
+        nanobot 学习笔记 · 对话压缩
+      </div>
+      <div class="footer-note">bearclaw 系列 · Session 篇</div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

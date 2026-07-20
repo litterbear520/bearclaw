@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 from tools.loader import load_tools
 from providers.factory import make_provider
 from session.manager import SessionManager
+from session.consolidator import Consolidator
+
 
 load_dotenv()
 
@@ -16,11 +18,11 @@ SYSTEM = f"你是一个编程智能体，你的工作区在{os.getcwd()}"
 
 
 # 循环构建
-def agent_loop(messages: list):
+def agent_loop(session):
     while True:
         response = provider.chat(
             tools=registry.get_schema(), 
-            messages=[{"role": "system", "content": SYSTEM}] + messages, 
+            messages=[{"role": "system", "content": SYSTEM}] + session.get_history(), 
             max_tokens=10000
         )
         
@@ -30,7 +32,7 @@ def agent_loop(messages: list):
                 {"id": tc.id, "type": "function", "function": {"name": tc.name, "arguments": tc.args}}
                 for tc in response.tool_calls
             ]
-        messages.append(ai_msg)
+        session.messages.append(ai_msg)
 
         if response.finish_reason != "tool_calls":
             return
@@ -39,7 +41,7 @@ def agent_loop(messages: list):
             print(f"使用工具：{tc.name}, 参数：{tc.args}")
             output = registry.run(tc.name, **(tc.args if isinstance(tc.args, dict) else {}))
             print(f"工具结果：{output}")
-            messages.append({
+            session.messages.append({
                 "role": "tool",
                 "tool_call_id": tc.id,
                 "content": output
@@ -51,13 +53,17 @@ if __name__ == "__main__":
     print("Welcome to bearclaw!")
     sessions = SessionManager(Path.cwd())
     session = sessions.get_or_create("default")
+    consolidator = Consolidator(sessions)
+
     while True: 
         try: 
             query = input(">> ")
         except Exception:
             break
+
         session.messages.append({"role": "user", "content": query})
-        agent_loop(session.messages)
+        consolidator.maybe_consolidate(session, provider, context_window=2000, max_tokens=200)
+        agent_loop(session)
         sessions.save(session)
         for msg in reversed(session.messages):
             if msg.get("role") == "assistant" and msg.get("content"):

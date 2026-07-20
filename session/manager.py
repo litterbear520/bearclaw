@@ -1,15 +1,16 @@
 import json
 import os
 
-from dataclasses import dataclass, field
-from datetime import datetime
-from pathlib import Path
 from typing import Any
+from pathlib import Path
+from datetime import datetime
+from dataclasses import dataclass, field
 
 
 @dataclass
 class Session:
     key: str
+    last_consolidated: int = 0
     messages: list[dict[str, Any]] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
@@ -26,11 +27,15 @@ class Session:
         self.updated_at = datetime.now()
 
     def get_history(self) -> list[dict[str, Any]]:
-        return self.messages
+        return self.messages[self.last_consolidated:]
 
     def clear(self) -> None:
         self.messages = []
         self.updated_at = datetime.now()
+
+    def estimate_tokens(self) -> int:
+        from utils.tokens import estimate_message_tokens
+        return sum(estimate_message_tokens(msg) for msg in self.messages[self.last_consolidated:])
 
 
 class SessionManager:
@@ -66,6 +71,7 @@ class SessionManager:
                 data = json.loads(line)
                 if data.get("_type") == "metadata":
                     metadata = data.get("metadata", {})
+                    last_consolidated = data.get("last_consolidated", 0)
                     created_at = datetime.fromisoformat(data["created_at"]) if data.get("created_at") else None
                     updated_at = datetime.fromisoformat(data["updated_at"]) if data.get("updated_at") else None
                 else:
@@ -74,6 +80,7 @@ class SessionManager:
         return Session(
             key=key,
             messages=messages,
+            last_consolidated=last_consolidated,
             created_at=created_at or datetime.now(),
             updated_at=updated_at or datetime.now(),
             metadata=metadata,
@@ -87,6 +94,7 @@ class SessionManager:
             metadata_line = {
                 "_type": "metadata",
                 "key": session.key,
+                "last_consolidated": session.last_consolidated,
                 "created_at": session.created_at.isoformat(),
                 "updated_at": session.updated_at.isoformat(),
                 "metadata": session.metadata,
