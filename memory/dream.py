@@ -26,8 +26,9 @@ class Dream:
         prompt, last_cursor = result
         tools = self.store.build_dream_tools()
         session = Session(key="dream")
+        session.messages.append({"role": "user", "content": prompt})
 
-        spec = AgentRunSpec(system=prompt, tools=tools, provider=self.provider)
+        spec = AgentRunSpec(system="", tools=tools, provider=self.provider)
         self.runner.run(spec, session)
 
         self.store.set_last_dream_cursor(last_cursor)

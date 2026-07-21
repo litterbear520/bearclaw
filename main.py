@@ -1,54 +1,66 @@
-import os
+import asyncio
 
 from pathlib import Path
 from dotenv import load_dotenv
 
-from session.manager import SessionManager
-from session.consolidator import Consolidator
-
+from bus.events import InboundMessage
+from bus.queue import MessageBus
+from agent.loop import AgentLoop
 from tools.loader import load_tools
 from providers.factory import make_provider
-from utils.prompt_templates import render_template
-from memory.store import MemoryStore
-from memory.dream import Dream
-from agent.runner import AgentRunner, AgentRunSpec
 
 load_dotenv()
 
-registry = load_tools()
-provider = make_provider()
+async def main():
+    bus = MessageBus()
+    provider = make_provider()
+    tools = load_tools()
+    workspace = Path.cwd()
 
-SYSTEM = render_template("identity.md", workspace=os.getcwd())
+    loop = AgentLoop(bus, provider, tools, workspace)
+    loop_task = asyncio.create_task(loop.run())
 
-        
-# 主函数
-if __name__ == "__main__":
-    print("Welcome to bearclaw!")
-    sessions = SessionManager(Path.cwd())
-    session = sessions.get_or_create("default")
-    store = MemoryStore(Path.cwd())
-    consolidator = Consolidator(store, sessions)
-    dream = Dream(store, provider)
-    runner = AgentRunner()
+    turn_done = asyncio.Event()
+    turn_done.set()
 
-    while True: 
-        try: 
-            query = input(">> ")
-        except Exception:
-            break
-
-        session.messages.append({"role": "user", "content": query})
-        consolidator.maybe_consolidate(session, provider, context_window=2000, max_tokens=200)
-
-        system = SYSTEM
-        if session.metadata.get("_last_summary"):
-            system += f"\n\n[Archived Context Summary]\n{session.metadata['_last_summary']}"
-        spec = AgentRunSpec(system=system, tools=registry, provider=provider)
-        runner.run(spec, session)
-        sessions.save(session)
-        dream.run()
-        for msg in reversed(session.messages):
-            if msg.get("role") == "assistant" and msg.get("content"):
-                print(msg["content"])
+    async def consume_outbound():
+        while True:
+            try:
+                msg = await asyncio.wait_for(bus.consume_outbound(), timeout=1.0)
+            except asyncio.TimeoutError:
+                continue
+            except asyncio.CancelledError:
                 break
-        print()
+            print(msg.content)
+            print()
+            turn_done.set()
+
+    outbound_task = asyncio.create_task(consume_outbound())
+    print("Welcome to bearclaw!")
+    io_loop = asyncio.get_event_loop()
+    try:
+        while True:
+            try:
+                query = await io_loop.run_in_executor(None, input, ">> ")
+            except (EOFError, KeyboardInterrupt):
+                break
+            query = query.strip()
+            if not query:
+                continue
+
+            turn_done.clear()
+            await bus.publish_inbound(InboundMessage(
+                channel="cli",
+                sender_id="user",
+                chat_id="cli",
+                content=query
+            ))
+            await turn_done.wait()
+    finally:
+        loop._running = False
+        loop_task.cancel()
+        outbound_task.cancel()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
