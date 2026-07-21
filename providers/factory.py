@@ -5,7 +5,7 @@ from providers.base import LLMProvider
 
 def make_provider() -> LLMProvider:
     api_key = os.getenv("LLM_API_KEY", "")
-    base_url = os.getenv("LLM_API_BASE", "")
+    base_url = os.getenv("LLM_BASE_URL", "")
     model = os.getenv("LLM_MODEL", "")
     backend = os.getenv("LLM_BACKEND", "openai_compat")
 

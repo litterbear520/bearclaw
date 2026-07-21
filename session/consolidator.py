@@ -1,3 +1,4 @@
+from utils.prompt_templates import render_template
 from session.manager import Session, SessionManager
 
 
@@ -47,7 +48,7 @@ class Consolidator:
         try:
             response = provider.chat(
                 messages=[
-                    {"role": "system", "content": "提炼这段对话的关键事实，每行简洁一条。如果没有值得记录的内容，输出：(nothing)"},
+                    {"role": "system", "content": render_template("consolidator_archive.md", strip=True)},
                     {"role": "user", "content": formatted}
                 ],
                 tools=[],
@@ -81,12 +82,14 @@ class Consolidator:
                 
             boundary = self.pick_consolidation_boundary(session, estimated - target)
             if boundary is None:
+                print(f"[压缩] 找不到安全切割点，跳过")
                 break
 
             chunk = session.messages[session.last_consolidated:boundary]
             if not chunk:
                 break
 
+            print(f"[压缩] 开始压缩: chunk={len(chunk)} msgs, estimated={estimated}, target={target}")
             summary = self.archive(chunk, provider, session_key=session.key)
             session.last_consolidated = boundary
             self.sessions.save(session)

@@ -7,6 +7,7 @@ from tools.loader import load_tools
 from providers.factory import make_provider
 from session.manager import SessionManager
 from session.consolidator import Consolidator
+from utils.prompt_templates import render_template
 
 
 load_dotenv()
@@ -14,15 +15,15 @@ load_dotenv()
 registry = load_tools()
 provider = make_provider()
 
-SYSTEM = f"你是一个编程智能体，你的工作区在{os.getcwd()}"
+SYSTEM = render_template("identity.md", workspace=os.getcwd())
 
 
 # 循环构建
-def agent_loop(session):
+def agent_loop(session, system):
     while True:
         response = provider.chat(
             tools=registry.get_schema(), 
-            messages=[{"role": "system", "content": SYSTEM}] + session.get_history(), 
+            messages=[{"role": "system", "content": system}] + session.get_history(), 
             max_tokens=10000
         )
         
@@ -63,7 +64,11 @@ if __name__ == "__main__":
 
         session.messages.append({"role": "user", "content": query})
         consolidator.maybe_consolidate(session, provider, context_window=2000, max_tokens=200)
-        agent_loop(session)
+
+        system = SYSTEM
+        if session.metadata.get("_last_summary"):
+            system += f"\n\n[Archived Context Summary]\n{session.metadata['_last_summary']}"
+        agent_loop(session, system)
         sessions.save(session)
         for msg in reversed(session.messages):
             if msg.get("role") == "assistant" and msg.get("content"):
