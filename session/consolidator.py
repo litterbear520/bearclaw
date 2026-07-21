@@ -1,9 +1,11 @@
 from utils.prompt_templates import render_template
 from session.manager import Session, SessionManager
+from memory.store import MemoryStore
 
 
 class Consolidator:
-    def __init__(self, sessions: SessionManager, consolidation_ratio: float=0.5) -> None:
+    def __init__(self, store: MemoryStore, sessions: SessionManager, consolidation_ratio: float=0.5) -> None:
+        self.store = store
         self.sessions = sessions
         self.consolidation_ratio = consolidation_ratio
     
@@ -54,7 +56,9 @@ class Consolidator:
                 tools=[],
                 max_tokens=2000,
             )
-            return response.content or "(nothing)"
+            summary = response.content or "(nothing)"
+            self.store.append_history(summary, session_key=session_key)
+            return summary
         except Exception:
             return None
 
