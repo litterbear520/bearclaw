@@ -1,5 +1,4 @@
 import asyncio
-import os
 
 from pathlib import Path
 
@@ -12,7 +11,7 @@ from memory.dream import Dream
 from agent.runner import AgentRunner, AgentRunSpec
 from providers.base import LLMProvider
 from tools.registry import ToolRegistry
-from utils.prompt_templates import render_template
+from agent.context import ContextBuilder
 
 
 class AgentLoop:
@@ -35,7 +34,7 @@ class AgentLoop:
         self.consolidator = Consolidator(self.store, self.sessions)
         self.dream = Dream(self.store, provider)
         self.runner = AgentRunner()
-        self.system = render_template("identity.md", workspace=str(workspace))
+        self.context = ContextBuilder(workspace)
 
     async def run(self) -> None:
         self._running = True
@@ -51,20 +50,25 @@ class AgentLoop:
 
             try:
                 session = self.sessions.get_or_create(msg.session_key)
-                session.messages.append({"role": "user", "content": msg.content})
-
                 io_loop = asyncio.get_event_loop()
 
                 await io_loop.run_in_executor(None, lambda: self.consolidator.maybe_consolidate(
                     session, self.provider, context_window=2000, max_tokens=200,
                 ))
 
-                system = self.system
-                if session.metadata.get("_last_summary"):
-                    system += f"\n\n[Archived Context Summary]\n{session.metadata['_last_summary']}"
+                messages = self.context.build_messages(
+                    history=session.get_history(),
+                    current_message=msg.content,
+                    session_summary=session.metadata.get("_last_summary"),
+                )
+
+                session.messages.append({
+                    "role": "user",
+                    "content": msg.content,
+                })
 
                 spec = AgentRunSpec(
-                    system=system,
+                    initial_messages=messages,
                     tools=self.tools,
                     provider=self.provider,
                 )

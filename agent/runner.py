@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 from providers.base import LLMProvider
 from tools.registry import ToolRegistry
@@ -6,7 +7,7 @@ from session.manager import Session
 
 @dataclass
 class AgentRunSpec:
-    system: str
+    initial_messages: list[dict[str, Any]]
     tools: ToolRegistry
     provider: LLMProvider
     max_iterations: int = 50
@@ -15,10 +16,13 @@ class AgentRunSpec:
 class AgentRunner:
 
     def run(self, spec: AgentRunSpec, session: Session) -> None:
+
+        messages = list(spec.initial_messages)
+
         for iteration in range(spec.max_iterations):
             response = spec.provider.chat(
                 tools=spec.tools.get_schema(),
-                messages=[{"role": "system", "content": spec.system}] + session.get_history(),
+                messages=messages,
                 max_tokens=10000,
             )
             ai_msg = {"role": "assistant", "content": response.content}
@@ -28,6 +32,7 @@ class AgentRunner:
                     for tc in response.tool_calls
                 ]
             session.messages.append(ai_msg)
+            messages.append(ai_msg)
 
             if response.finish_reason != "tool_calls":
                 return
@@ -36,8 +41,10 @@ class AgentRunner:
                 print(f"使用工具：{tc.name}, 参数：{tc.args}")
                 output = spec.tools.run(tc.name, **(tc.args if isinstance(tc.args, dict) else {}))
                 print(f"工具结果：{output}")
-                session.messages.append({
+                tool_msg = {
                     "role": "tool",
                     "tool_call_id": tc.id,
                     "content": output,
-                })
+                }
+                session.messages.append(tool_msg)
+                messages.append(tool_msg)
