@@ -6,7 +6,6 @@ from bus.events import OutboundMessage
 from bus.queue import MessageBus
 from session.manager import Session, SessionManager
 from memory.store import MemoryStore, Consolidator
-from memory.dream import Dream
 from agent.runner import AgentRunner, AgentRunSpec
 from providers.base import LLMProvider
 from tools.registry import ToolRegistry
@@ -38,7 +37,24 @@ class AgentLoop:
             build_messages=self.context.build_messages,
             get_tool_definitions=self.tools.get_schema,
         )
-        self.dream = Dream(self.store, provider)
+
+    def _run_dream(self) -> None:
+        result = self.store.build_dream_prompt()
+        if result is None:
+            return
+        
+        prompt, last_cursor = result
+        tools = self.store.build_dream_tools()
+
+        spec = AgentRunSpec(
+            initial_messages=[{"role": "user", "content": prompt}],
+            tools=tools,
+            provider=self.provider
+        )
+        self.runner.run(spec)
+
+        self.store.set_last_dream_cursor(last_cursor)
+        print(f"[Dream] 完成， cursor 推进到 {last_cursor}")
 
     def _save_turn(self, session: Session, messages: list[dict], skip: int) -> None:
         from datetime import datetime
@@ -88,7 +104,7 @@ class AgentLoop:
                 result = await io_loop.run_in_executor(None, lambda: self.runner.run(spec))
                 self._save_turn(session, result.messages, len(messages))
                 self.sessions.save(session)
-                await io_loop.run_in_executor(None, self.dream.run)
+                await io_loop.run_in_executor(None, self._run_dream)
 
                 response = result.final_content or ""
 

@@ -52,6 +52,7 @@ class AgentRunner:
                 tool_msg = {
                     "role": "tool",
                     "tool_call_id": tc.id,
+                    "name": tc.name,
                     "content": output,
                 }
                 messages.append(tool_msg)

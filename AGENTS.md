@@ -35,7 +35,7 @@ LLM响应 → session.messages → MessageBus(outbound) → 打印输出
 | `agent/runner.py` | `agent/runner.py` | 多轮 LLM 对话 + 工具执行循环 |
 | `agent/context.py` | `agent/context.py` | 组装 system prompt + 历史 + 当前消息 |
 | `memory/store.py` | `agent/memory.py` | MemoryStore + Consolidator（同文件，与 nanobot 一致） |
-| `memory/dream.py` | (memory.py 内方法) | Dream 记忆整合（nanobot 中 Dream 是 MemoryStore 的方法集） |
+| `agent/loop.py:_run_dream` | (commands.py cron 调度) | Dream 记忆整合（nanobot 通过 process_direct ephemeral 执行） |
 | `bus/` | `bus/` | MessageBus + InboundMessage/OutboundMessage |
 | `providers/` | `providers/` | LLMProvider ABC → Anthropic / OpenAI 兼容实现 |
 | `tools/context.py` | `agent/tools/context.py` | ToolContext dataclass（工厂方法上下文） |
@@ -55,7 +55,7 @@ LLM响应 → session.messages → MessageBus(outbound) → 打印输出
 
 ### 当前进行中
 
-AgentRunner 已对齐 nanobot 的纯函数式设计（`AgentRunResult` + `_save_turn`）。用户正在进行**期中复习**——通过 `html/bearclaw-architecture.html` 架构全景图回顾已完成的所有模块，确认理解后继续 roadmap。
+Dream 已从独立类改为 `AgentLoop._run_dream` 方法，对齐 nanobot（通过 loop 复用 runner 执行）。用户正在进行**期中复习**——通过 `html/bearclaw-architecture.html` 架构全景图回顾已完成的所有模块，确认理解后继续 roadmap。
 
 ## Constraints
 

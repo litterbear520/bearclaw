@@ -731,8 +731,8 @@
   </div>
 
   <div class="sidebar-footer">
-    11 commits &middot; 26 source files<br>
-    8 modules &middot; 19 classes
+    11 commits &middot; 25 source files<br>
+    8 modules &middot; 18 classes
   </div>
 </nav>
 
@@ -750,11 +750,11 @@
           <div class="hero-stat-label">子模块</div>
         </div>
         <div class="hero-stat">
-          <div class="hero-stat-value">19</div>
+          <div class="hero-stat-value">18</div>
           <div class="hero-stat-label">类 / 数据类</div>
         </div>
         <div class="hero-stat">
-          <div class="hero-stat-value">26</div>
+          <div class="hero-stat-value">25</div>
           <div class="hero-stat-label">源文件</div>
         </div>
         <div class="hero-stat">
@@ -886,8 +886,7 @@
     </div>
 
     <div class="dep-graph-wrap">
-      <svg viewBox="0 0 860 520" width="860" height="520" xmlns="http://www.w3.org/2000/svg" style="font-family:'Cascadia Code','JetBrains Mono',monospace">
-        <!-- Defs -->
+      <svg viewBox="0 0 900 580" width="900" height="580" xmlns="http://www.w3.org/2000/svg" style="font-family:'Cascadia Code','JetBrains Mono',monospace">
         <defs>
           <marker id="arrow-coral" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
             <path d="M0 0 L8 3 L0 6Z" fill="#cc785c"/>
@@ -906,102 +905,108 @@
           </marker>
         </defs>
 
-        <!-- ── NODES ── -->
-        <!-- main.py -->
-        <rect x="360" y="16" width="140" height="40" rx="8" fill="rgba(204,120,92,0.18)" stroke="#cc785c" stroke-width="1.2"/>
-        <text x="430" y="41" text-anchor="middle" fill="#cc785c" font-size="13" font-weight="600">main.py</text>
+        <!--
+          Layout: 5 layers, top-to-bottom, no crossings.
 
-        <!-- bus/ -->
-        <rect x="100" y="110" width="140" height="40" rx="8" fill="rgba(93,184,166,0.15)" stroke="#5db8a6" stroke-width="1.2"/>
-        <text x="170" y="135" text-anchor="middle" fill="#5db8a6" font-size="13" font-weight="600">bus/</text>
+          Layer 0:  main.py                          (入口)
+          Layer 1:  channels/    agent/    providers/ (核心三件)
+          Layer 2:  bus/         tools/               (基础设施)
+          Layer 3:  session/     memory/              (持久化)
+          Layer 4:  utils/       templates/           (辅助)
+        -->
 
-        <!-- channels/ -->
-        <rect x="100" y="210" width="140" height="40" rx="8" fill="rgba(232,165,90,0.15)" stroke="#e8a55a" stroke-width="1.2"/>
-        <text x="170" y="235" text-anchor="middle" fill="#e8a55a" font-size="13" font-weight="600">channels/</text>
+        <!-- ── Layer 0: main.py ── -->
+        <rect x="380" y="20" width="140" height="40" rx="8" fill="rgba(204,120,92,0.18)" stroke="#cc785c" stroke-width="1.2"/>
+        <text x="450" y="45" text-anchor="middle" fill="#cc785c" font-size="13" font-weight="600">main.py</text>
 
-        <!-- agent/ -->
-        <rect x="360" y="110" width="140" height="40" rx="8" fill="rgba(204,120,92,0.18)" stroke="#cc785c" stroke-width="1.2"/>
-        <text x="430" y="135" text-anchor="middle" fill="#cc785c" font-size="13" font-weight="600">agent/</text>
+        <!-- ── Layer 1: channels / agent / providers ── -->
+        <rect x="80" y="120" width="140" height="40" rx="8" fill="rgba(232,165,90,0.15)" stroke="#e8a55a" stroke-width="1.2"/>
+        <text x="150" y="145" text-anchor="middle" fill="#e8a55a" font-size="13" font-weight="600">channels/</text>
 
-        <!-- providers/ -->
-        <rect x="620" y="110" width="140" height="40" rx="8" fill="rgba(93,184,114,0.12)" stroke="#5db872" stroke-width="1.2"/>
-        <text x="690" y="135" text-anchor="middle" fill="#5db872" font-size="13" font-weight="600">providers/</text>
+        <rect x="380" y="120" width="140" height="40" rx="8" fill="rgba(204,120,92,0.18)" stroke="#cc785c" stroke-width="1.2"/>
+        <text x="450" y="145" text-anchor="middle" fill="#cc785c" font-size="13" font-weight="600">agent/</text>
 
-        <!-- tools/ -->
-        <rect x="620" y="210" width="140" height="40" rx="8" fill="rgba(232,165,90,0.15)" stroke="#e8a55a" stroke-width="1.2"/>
-        <text x="690" y="235" text-anchor="middle" fill="#e8a55a" font-size="13" font-weight="600">tools/</text>
+        <rect x="680" y="120" width="140" height="40" rx="8" fill="rgba(93,184,114,0.12)" stroke="#5db872" stroke-width="1.2"/>
+        <text x="750" y="145" text-anchor="middle" fill="#5db872" font-size="13" font-weight="600">providers/</text>
 
-        <!-- session/ -->
-        <rect x="280" y="260" width="140" height="40" rx="8" fill="rgba(93,184,166,0.15)" stroke="#5db8a6" stroke-width="1.2"/>
-        <text x="350" y="285" text-anchor="middle" fill="#5db8a6" font-size="13" font-weight="600">session/</text>
+        <!-- ── Layer 2: bus / tools ── -->
+        <rect x="80" y="230" width="140" height="40" rx="8" fill="rgba(93,184,166,0.15)" stroke="#5db8a6" stroke-width="1.2"/>
+        <text x="150" y="255" text-anchor="middle" fill="#5db8a6" font-size="13" font-weight="600">bus/</text>
 
-        <!-- memory/ -->
-        <rect x="460" y="260" width="140" height="40" rx="8" fill="rgba(204,120,92,0.18)" stroke="#cc785c" stroke-width="1.2"/>
-        <text x="530" y="285" text-anchor="middle" fill="#cc785c" font-size="13" font-weight="600">memory/</text>
+        <rect x="680" y="230" width="140" height="40" rx="8" fill="rgba(232,165,90,0.15)" stroke="#e8a55a" stroke-width="1.2"/>
+        <text x="750" y="255" text-anchor="middle" fill="#e8a55a" font-size="13" font-weight="600">tools/</text>
 
-        <!-- utils/ -->
-        <rect x="280" y="370" width="140" height="40" rx="8" fill="rgba(142,139,130,0.15)" stroke="#8e8b82" stroke-width="1.2"/>
-        <text x="350" y="395" text-anchor="middle" fill="#8e8b82" font-size="13" font-weight="600">utils/</text>
+        <!-- ── Layer 3: session / memory ── -->
+        <rect x="280" y="330" width="140" height="40" rx="8" fill="rgba(93,184,166,0.15)" stroke="#5db8a6" stroke-width="1.2"/>
+        <text x="350" y="355" text-anchor="middle" fill="#5db8a6" font-size="13" font-weight="600">session/</text>
 
-        <!-- templates/ -->
-        <rect x="460" y="370" width="140" height="40" rx="8" fill="rgba(142,139,130,0.15)" stroke="#8e8b82" stroke-width="1.2"/>
-        <text x="530" y="395" text-anchor="middle" fill="#8e8b82" font-size="13" font-weight="600">templates/</text>
+        <rect x="500" y="330" width="140" height="40" rx="8" fill="rgba(204,120,92,0.18)" stroke="#cc785c" stroke-width="1.2"/>
+        <text x="570" y="355" text-anchor="middle" fill="#cc785c" font-size="13" font-weight="600">memory/</text>
 
-        <!-- ── EDGES ── -->
-        <!-- main → bus -->
-        <path d="M400 56 Q340 83 220 110" fill="none" stroke="#cc785c" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arrow-coral)"/>
-        <!-- main → agent -->
-        <path d="M430 56 L430 102" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
-        <!-- main → providers -->
-        <path d="M460 56 Q540 83 660 110" fill="none" stroke="#cc785c" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arrow-coral)"/>
-        <!-- main → tools -->
-        <path d="M500 46 Q750 60 710 202" fill="none" stroke="#cc785c" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arrow-coral)"/>
+        <!-- ── Layer 4: utils / templates ── -->
+        <rect x="280" y="440" width="140" height="40" rx="8" fill="rgba(142,139,130,0.15)" stroke="#8e8b82" stroke-width="1.2"/>
+        <text x="350" y="465" text-anchor="middle" fill="#8e8b82" font-size="13" font-weight="600">utils/</text>
 
-        <!-- agent → bus -->
-        <path d="M360 130 L248 130" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
-        <!-- agent → providers -->
-        <path d="M500 130 L612 130" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
-        <!-- agent → tools -->
-        <path d="M490 150 Q590 175 640 210" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
-        <!-- agent → session -->
-        <path d="M400 150 Q370 200 350 252" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
-        <!-- agent → memory -->
-        <path d="M460 150 Q490 200 520 252" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
-        <!-- agent → utils (context uses prompt_templates) -->
-        <path d="M380 150 Q350 310 350 362" fill="none" stroke="#6c6a64" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-muted)"/>
+        <rect x="500" y="440" width="140" height="40" rx="8" fill="rgba(142,139,130,0.15)" stroke="#8e8b82" stroke-width="1.2"/>
+        <text x="570" y="465" text-anchor="middle" fill="#8e8b82" font-size="13" font-weight="600">templates/</text>
 
-        <!-- channels → bus -->
-        <path d="M170 210 L170 158" fill="none" stroke="#e8a55a" stroke-width="1.2" marker-end="url(#arrow-amber)"/>
+        <!-- ── EDGES (all top-to-bottom, no crossings) ── -->
 
-        <!-- memory → utils (helpers: estimate_*) -->
-        <path d="M530 300 Q490 340 430 370" fill="none" stroke="#6c6a64" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-muted)"/>
+        <!-- main → agent (直下) -->
+        <path d="M450 60 L450 112" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
+        <!-- main → channels (左下) -->
+        <path d="M390 60 L190 112" fill="none" stroke="#cc785c" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arrow-coral)"/>
+        <!-- main → providers (右下) -->
+        <path d="M510 60 L710 112" fill="none" stroke="#cc785c" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arrow-coral)"/>
+        <!-- main → tools (远右下) -->
+        <path d="M520 50 Q820 80 770 222" fill="none" stroke="#cc785c" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arrow-coral)"/>
 
-        <!-- memory → utils (prompt_templates) -->
-        <path d="M510 300 Q470 340 420 370" fill="none" stroke="#6c6a64" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-muted)"/>
-        <!-- memory → tools (dream tools) -->
-        <path d="M600 275 Q650 260 650 250" fill="none" stroke="#cc785c" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-coral)"/>
+        <!-- channels → bus (直下) -->
+        <path d="M150 160 L150 222" fill="none" stroke="#e8a55a" stroke-width="1.2" marker-end="url(#arrow-amber)"/>
 
-        <!-- utils → templates -->
-        <path d="M420 390 L452 390" fill="none" stroke="#6c6a64" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-muted)"/>
+        <!-- agent → bus (左下) -->
+        <path d="M390 160 L210 222" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
+        <!-- agent → providers (右平) -->
+        <path d="M520 140 L672 140" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
+        <!-- agent → tools (右下) -->
+        <path d="M510 160 L700 222" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
+        <!-- agent → session (左下) -->
+        <path d="M410 160 L370 322" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
+        <!-- agent → memory (右下) -->
+        <path d="M480 160 L550 322" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
+        <!-- agent → utils (远下，虚线) -->
+        <path d="M420 160 L350 432" fill="none" stroke="#6c6a64" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-muted)"/>
+
+        <!-- memory → session (左平) -->
+        <path d="M500 350 L428 350" fill="none" stroke="#cc785c" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-coral)"/>
+        <!-- memory → utils (左下) -->
+        <path d="M530 370 L400 432" fill="none" stroke="#6c6a64" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-muted)"/>
+        <!-- memory → templates (右下) -->
+        <path d="M570 370 L570 432" fill="none" stroke="#6c6a64" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-muted)"/>
+        <!-- memory → tools (右上，虚线) -->
+        <path d="M640 340 Q740 300 740 278" fill="none" stroke="#cc785c" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-coral)"/>
+
+        <!-- utils → templates (右平) -->
+        <path d="M420 460 L492 460" fill="none" stroke="#6c6a64" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-muted)"/>
 
         <!-- ── LEGEND ── -->
-        <rect x="80" y="440" width="700" height="60" rx="8" fill="rgba(250,249,245,0.04)" stroke="rgba(250,249,245,0.08)" stroke-width="1"/>
-        <text x="100" y="463" fill="#8e8b82" font-size="11" font-weight="600" letter-spacing="1">LEGEND</text>
+        <rect x="80" y="505" width="740" height="55" rx="8" fill="rgba(250,249,245,0.04)" stroke="rgba(250,249,245,0.08)" stroke-width="1"/>
+        <text x="100" y="526" fill="#8e8b82" font-size="11" font-weight="600" letter-spacing="1">LEGEND</text>
 
-        <line x1="100" y1="484" x2="130" y2="484" stroke="#cc785c" stroke-width="1.5"/>
-        <text x="136" y="488" fill="#a09d96" font-size="11">直接依赖</text>
+        <line x1="100" y1="544" x2="130" y2="544" stroke="#cc785c" stroke-width="1.5"/>
+        <text x="136" y="548" fill="#a09d96" font-size="11">直接依赖</text>
 
-        <line x1="230" y1="484" x2="260" y2="484" stroke="#6c6a64" stroke-width="1" stroke-dasharray="4 3"/>
-        <text x="266" y="488" fill="#a09d96" font-size="11">间接 / 辅助依赖</text>
+        <line x1="240" y1="544" x2="270" y2="544" stroke="#6c6a64" stroke-width="1" stroke-dasharray="4 3"/>
+        <text x="276" y="548" fill="#a09d96" font-size="11">间接 / 辅助依赖</text>
 
-        <rect x="410" y="476" width="12" height="12" rx="3" fill="rgba(204,120,92,0.18)" stroke="#cc785c" stroke-width="0.8"/>
-        <text x="428" y="487" fill="#a09d96" font-size="11">核心模块</text>
+        <rect x="430" y="538" width="12" height="12" rx="3" fill="rgba(204,120,92,0.18)" stroke="#cc785c" stroke-width="0.8"/>
+        <text x="448" y="549" fill="#a09d96" font-size="11">核心模块</text>
 
-        <rect x="520" y="476" width="12" height="12" rx="3" fill="rgba(93,184,166,0.15)" stroke="#5db8a6" stroke-width="0.8"/>
-        <text x="538" y="487" fill="#a09d96" font-size="11">数据 / 存储</text>
+        <rect x="540" y="538" width="12" height="12" rx="3" fill="rgba(93,184,166,0.15)" stroke="#5db8a6" stroke-width="0.8"/>
+        <text x="558" y="549" fill="#a09d96" font-size="11">数据 / 存储</text>
 
-        <rect x="630" y="476" width="12" height="12" rx="3" fill="rgba(142,139,130,0.15)" stroke="#8e8b82" stroke-width="0.8"/>
-        <text x="648" y="487" fill="#a09d96" font-size="11">工具 / 辅助</text>
+        <rect x="650" y="538" width="12" height="12" rx="3" fill="rgba(142,139,130,0.15)" stroke="#8e8b82" stroke-width="0.8"/>
+        <text x="668" y="549" fill="#a09d96" font-size="11">工具 / 辅助</text>
       </svg>
     </div>
   </section>
@@ -1155,6 +1160,7 @@
                 <div class="method-item"><span class="method-name">__init__(bus, provider, tools, workspace)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">初始化 SessionManager, MemoryStore, Consolidator, Dream, AgentRunner, ContextBuilder</span></div>
                 <div class="method-item"><span class="method-name">run()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">消费 inbound &rarr; 压缩 &rarr; 构建上下文 &rarr; runner &rarr; _save_turn &rarr; dream &rarr; 发布 outbound</span></div>
                 <div class="method-item"><span class="method-name">_save_turn(session, messages, skip)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">跳过初始消息，将新增消息打时间戳后存入 session</span></div>
+                <div class="method-item"><span class="method-name">_run_dream()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">构建 dream prompt &rarr; 复用 runner 执行（ephemeral，不存 session）&rarr; 推进 cursor</span></div>
               </div>
             </div>
           </div>
@@ -1526,19 +1532,7 @@
             </div>
           </div>
 
-          <div class="file-block">
-            <div class="file-name">dream.py</div>
-            <div class="class-block">
-              <div class="class-header">
-                <span class="class-badge badge-class">CLASS</span>
-                <span class="class-name">Dream</span>
-                <span class="class-desc">记忆整合（二阶段记忆）</span>
-              </div>
-              <div class="class-methods">
-                <div class="method-item"><span class="method-name">run()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">build_dream_prompt() &rarr; AgentRunner 执行（用受限工具编辑记忆文件）&rarr; 推进 cursor</span></div>
-              </div>
-            </div>
-          </div>
+          <!-- dream.py 已删除，Dream 执行逻辑移至 agent/loop.py:_run_dream -->
         </div>
       </div>
 
