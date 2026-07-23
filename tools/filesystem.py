@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 import glob as g
+import typing
 
 from pathlib import Path
 from tools.base import Tool
 
+if typing.TYPE_CHECKING:
+    from tools.context import ToolContext
 
 def safe_path(workspace: Path, p: str) -> Path:
     path = (workspace / p).resolve()
@@ -25,6 +30,10 @@ class ReadFileTool(Tool):
 
     def __init__(self, workspace: Path | None = None):
         self.workspace = (workspace or Path.cwd()).resolve()
+
+    @classmethod
+    def create(cls, ctx: ToolContext) -> Tool:
+        return cls(workspace=ctx.workspace)
 
     def run(self, path: str, limit: int | None = None) -> str:
         try:
@@ -50,6 +59,10 @@ class WriteFileTool(Tool):
 
     def __init__(self, workspace: Path | None = None):
         self.workspace = (workspace or Path.cwd()).resolve()
+
+    @classmethod
+    def create(cls, ctx: ToolContext) -> Tool:
+        return cls(workspace=ctx.workspace)
 
     def run(self, path: str, content: str) -> str:
         try:
@@ -77,6 +90,10 @@ class EditFileTool(Tool):
     def __init__(self, workspace: Path | None = None):
         self.workspace = (workspace or Path.cwd()).resolve()
 
+    @classmethod
+    def create(cls, ctx: ToolContext) -> Tool:
+        return cls(workspace=ctx.workspace)
+
     def run(self, path: str, old_text: str, new_text: str) -> str:
         try:
             file_path = safe_path(self.workspace, path)
@@ -103,6 +120,10 @@ class GlobTool(Tool):
     def __init__(self, workspace: Path | None = None):
         self.workspace = (workspace or Path.cwd()).resolve()
 
+    @classmethod
+    def create(cls, ctx: ToolContext) -> Tool:
+        return cls(workspace=ctx.workspace)
+        
     def run(self, pattern: str) -> str:
         try:
             results = []

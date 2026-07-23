@@ -1,5 +1,12 @@
+from __future__ import annotations
+
+import typing
+
 from abc import ABC, abstractmethod
 from typing import Any
+
+if typing.TYPE_CHECKING:
+    from tools.context import ToolContext
 
 
 class Tool(ABC):
@@ -8,7 +15,7 @@ class Tool(ABC):
     params: dict = {}
 
     @classmethod
-    def create(cls, ctx: Any) -> "Tool":
+    def create(cls, ctx: ToolContext) -> Tool:
         return cls()
 
     @abstractmethod

@@ -731,8 +731,8 @@
   </div>
 
   <div class="sidebar-footer">
-    10 commits &middot; 25 source files<br>
-    8 modules &middot; 17 classes
+    11 commits &middot; 26 source files<br>
+    8 modules &middot; 18 classes
   </div>
 </nav>
 
@@ -750,15 +750,15 @@
           <div class="hero-stat-label">子模块</div>
         </div>
         <div class="hero-stat">
-          <div class="hero-stat-value">17</div>
+          <div class="hero-stat-value">18</div>
           <div class="hero-stat-label">类 / 数据类</div>
         </div>
         <div class="hero-stat">
-          <div class="hero-stat-value">25</div>
+          <div class="hero-stat-value">26</div>
           <div class="hero-stat-label">源文件</div>
         </div>
         <div class="hero-stat">
-          <div class="hero-stat-value">10</div>
+          <div class="hero-stat-value">11</div>
           <div class="hero-stat-label">Git 提交</div>
         </div>
       </div>
@@ -1302,6 +1302,20 @@
         </div>
         <div class="module-card-body">
           <div class="file-block">
+            <div class="file-name">context.py</div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-dataclass">DATACLASS</span>
+                <span class="class-name">ToolContext</span>
+                <span class="class-desc">工厂方法上下文（nanobot ToolContext 的减法版）</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">workspace: Path</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="file-block">
             <div class="file-name">base.py</div>
             <div class="class-block">
               <div class="class-header">
@@ -1311,6 +1325,7 @@
               </div>
               <div class="class-methods">
                 <div class="method-item"><span class="method-name">name, description, params</span> <span class="method-sep">&mdash;</span> <span class="method-desc">类属性</span></div>
+                <div class="method-item"><span class="method-name">create(ctx)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">@classmethod 工厂方法，默认 cls()；需要上下文的子类覆写</span></div>
                 <div class="method-item"><span class="method-name">run(**kwargs)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">执行工具 (abstract)</span></div>
                 <div class="method-item"><span class="method-name">to_schema()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">生成 OpenAI function 格式的 JSON Schema</span></div>
               </div>
@@ -1340,8 +1355,8 @@
             <div class="file-name">loader.py</div>
             <div class="func-row">
               <span class="class-badge badge-func">FUNC</span>
-              <span class="class-name">load_tools()</span>
-              <span class="class-desc">pkgutil 自动扫描 tools/ 目录，发现并注册所有 Tool 子类</span>
+              <span class="class-name">load_tools(workspace?)</span>
+              <span class="class-desc">构建 ToolContext，pkgutil 扫描 tools/，通过 cls.create(ctx) 统一注册</span>
             </div>
           </div>
 
@@ -1374,6 +1389,7 @@
                 <span class="class-parent">(Tool)</span>
               </div>
               <div class="class-methods">
+                <div class="method-item"><span class="method-name">create(ctx)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">覆写：从 ctx.workspace 构造</span></div>
                 <div class="method-item"><span class="method-name">run(path, limit?)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">读取文件内容，支持行数限制</span></div>
               </div>
             </div>
@@ -1384,6 +1400,7 @@
                 <span class="class-parent">(Tool)</span>
               </div>
               <div class="class-methods">
+                <div class="method-item"><span class="method-name">create(ctx)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">覆写：从 ctx.workspace 构造</span></div>
                 <div class="method-item"><span class="method-name">run(path, content)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">写入文件，自动创建父目录</span></div>
               </div>
             </div>
@@ -1394,6 +1411,7 @@
                 <span class="class-parent">(Tool)</span>
               </div>
               <div class="class-methods">
+                <div class="method-item"><span class="method-name">create(ctx)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">覆写：从 ctx.workspace 构造</span></div>
                 <div class="method-item"><span class="method-name">run(path, old_text, new_text)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">精确替换文件中的文本（一次）</span></div>
               </div>
             </div>
@@ -1404,6 +1422,7 @@
                 <span class="class-parent">(Tool)</span>
               </div>
               <div class="class-methods">
+                <div class="method-item"><span class="method-name">create(ctx)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">覆写：从 ctx.workspace 构造</span></div>
                 <div class="method-item"><span class="method-name">run(pattern)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">glob 模式匹配查找文件</span></div>
               </div>
             </div>
@@ -1582,7 +1601,7 @@
   <section class="section timeline-section" id="git-timeline">
     <div class="section-header" style="padding:0 0 40px;">
       <h2 style="color:var(--on-dark)">Git 演进时间线</h2>
-      <p style="color:var(--on-dark-soft)">从单文件 mini_agent 到模块化架构的 10 步旅程</p>
+      <p style="color:var(--on-dark-soft)">从单文件 mini_agent 到模块化架构的 11 步旅程</p>
     </div>
 
     <div class="timeline-wrap">
@@ -1731,7 +1750,7 @@
           <div class="timeline-hash">0e79d16</div>
           <div class="timeline-idx">#10</div>
         </div>
-        <div class="timeline-center"><div class="timeline-dot" style="background:var(--success);box-shadow:0 0 0 4px var(--dark),0 0 12px rgba(93,184,114,0.4)"></div><div class="timeline-line"></div></div>
+        <div class="timeline-center"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
         <div class="timeline-right">
           <div class="timeline-msg">上下文构建</div>
           <div class="timeline-detail">ContextBuilder：统一组装身份模板 + 工作区 bootstrap 文件 + 压缩摘要 + 对话历史。AgentLoop 完整贯通</div>
@@ -1739,6 +1758,24 @@
             <span class="timeline-tag tag-coral">agent/context.py</span>
             <span class="timeline-tag tag-coral">agent/loop.py</span>
             <span class="timeline-tag tag-green">main.py</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-left">
+          <div class="timeline-hash"></div>
+          <div class="timeline-idx">#11</div>
+        </div>
+        <div class="timeline-center"><div class="timeline-dot" style="background:var(--success);box-shadow:0 0 0 4px var(--dark),0 0 12px rgba(93,184,114,0.4)"></div><div class="timeline-line"></div></div>
+        <div class="timeline-right">
+          <div class="timeline-msg">Tool 工厂方法 + ToolContext</div>
+          <div class="timeline-detail">对齐 nanobot 的 Tool.create(ctx) 模式：ToolContext dataclass 传递上下文，loader 统一 cls.create(ctx)，消除 try/except 类型检查问题</div>
+          <div class="timeline-tags">
+            <span class="timeline-tag tag-amber">tools/context.py</span>
+            <span class="timeline-tag tag-amber">tools/base.py</span>
+            <span class="timeline-tag tag-amber">tools/filesystem.py</span>
+            <span class="timeline-tag tag-amber">tools/loader.py</span>
           </div>
         </div>
       </div>
@@ -1753,7 +1790,7 @@
         <span style="color:var(--on-dark);font-weight:600;">bearclaw</span> &mdash; nanobot 最小实现学习项目
       </div>
       <div style="font-size:12px;color:var(--on-dark-soft)">
-        当前进度：上下文构建 &middot; 10/? commits
+        当前进度：Tool 工厂方法 &middot; 11/? commits
       </div>
     </div>
   </footer>

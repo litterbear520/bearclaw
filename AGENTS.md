@@ -38,7 +38,8 @@ LLM响应 → session.messages → MessageBus(outbound) → 打印输出
 | `memory/dream.py` | (memory.py 内方法) | Dream 记忆整合（nanobot 中 Dream 是 MemoryStore 的方法集） |
 | `bus/` | `bus/` | MessageBus + InboundMessage/OutboundMessage |
 | `providers/` | `providers/` | LLMProvider ABC → Anthropic / OpenAI 兼容实现 |
-| `tools/` | `agent/tools/` | Tool ABC + Registry + 自动发现 + bash/filesystem 实现 |
+| `tools/context.py` | `agent/tools/context.py` | ToolContext dataclass（工厂方法上下文） |
+| `tools/` | `agent/tools/` | Tool ABC（含 create 工厂方法）+ Registry + 自动发现 + bash/filesystem 实现 |
 | `session/manager.py` | `session/manager.py` | Session dataclass + JSONL 持久化 |
 | `utils/helpers.py` | `utils/helpers.py` | token 估算、模板同步 |
 | `utils/prompt_templates.py` | `utils/prompt_templates.py` | Jinja2 模板渲染 |
@@ -49,12 +50,12 @@ LLM响应 → session.messages → MessageBus(outbound) → 打印输出
 - **无 AutoCompact**：只有 Consolidator，无运行时自动压缩。
 - **无 Hook/Governance**：无 AgentHook、ContextGovernor、注入回调。
 - **无 Skills/MCP/Config**：无技能系统、MCP 连接、Pydantic 配置。
-- **工具自动发现**：`tools/loader.py` 用 pkgutil 扫描，支持 workspace 参数的工具通过 try/except 注入。
+- **工具自动发现**：`tools/loader.py` 用 pkgutil 扫描，通过 `ToolContext` + `Tool.create(ctx)` 工厂方法统一注入上下文。
 - **Provider 工厂**：`LLM_BACKEND` 环境变量选择 anthropic / openai_compat。
 
 ### 当前进行中
 
-Consolidator 的完整 prompt 链估算已完成（`estimate_session_prompt_tokens`）。下一步参照 roadmap 继续推进。
+Tool 工厂方法模式已完成（`ToolContext` + `Tool.create(ctx)`），与 nanobot 对齐。下一步参照 roadmap 继续推进。
 
 ## Constraints
 
