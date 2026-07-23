@@ -5,8 +5,7 @@ from pathlib import Path
 from bus.events import OutboundMessage
 from bus.queue import MessageBus
 from session.manager import SessionManager
-from session.consolidator import Consolidator
-from memory.store import MemoryStore
+from memory.store import MemoryStore, Consolidator
 from memory.dream import Dream
 from agent.runner import AgentRunner, AgentRunSpec
 from providers.base import LLMProvider
@@ -31,16 +30,22 @@ class AgentLoop:
 
         self.sessions = SessionManager(workspace)
         self.store = MemoryStore(workspace)
-        self.consolidator = Consolidator(self.store, self.sessions)
-        self.dream = Dream(self.store, provider)
         self.runner = AgentRunner()
         self.context = ContextBuilder(workspace)
+        self.consolidator = Consolidator(
+            self.store,
+            self.sessions,
+            build_messages=self.context.build_messages,
+            get_tool_definitions=self.tools.get_schema,
+        )
+        self.dream = Dream(self.store, provider)
 
     async def run(self) -> None:
         self._running = True
         print("[AgentLoop] 启动")
 
         while self._running:
+            # 消费入栈消息
             try:
                 msg = await asyncio.wait_for(self.bus.consume_inbound(), timeout=1.0)
             except asyncio.TimeoutError:
@@ -49,7 +54,7 @@ class AgentLoop:
                 break
 
             try:
-                session = self.sessions.get_or_create(msg.session_key)
+                session = self.sessions.get_or_create(msg.session_key) # 获取当前对话
                 io_loop = asyncio.get_event_loop()
 
                 await io_loop.run_in_executor(None, lambda: self.consolidator.maybe_consolidate(

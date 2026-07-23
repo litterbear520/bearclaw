@@ -8,7 +8,7 @@ class AnthropicProvider(LLMProvider):
         self, 
         api_key: str | None = None, 
         base_url: str | None = None,
-        default_model: str = "deepseek-v4-flash"
+        default_model: str = "claude-sonnet-4-20250514"
         ):
         super().__init__(api_key, base_url)
         self.default_model = default_model

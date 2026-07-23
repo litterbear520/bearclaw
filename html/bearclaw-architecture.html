@@ -1,0 +1,1806 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bearclaw — 架构全景</title>
+<style>
+  :root {
+    --canvas: #faf9f5;
+    --card: #efe9de;
+    --card-strong: #e8e0d2;
+    --dark: #181715;
+    --dark-elevated: #252320;
+    --dark-soft: #1f1e1b;
+    --coral: #cc785c;
+    --coral-active: #a9583e;
+    --coral-15: rgba(204,120,92,0.15);
+    --coral-08: rgba(204,120,92,0.08);
+    --teal: #5db8a6;
+    --teal-15: rgba(93,184,166,0.15);
+    --amber: #e8a55a;
+    --amber-15: rgba(232,165,90,0.15);
+    --ink: #141413;
+    --body: #3d3d3a;
+    --body-strong: #252523;
+    --muted: #6c6a64;
+    --muted-soft: #8e8b82;
+    --on-dark: #faf9f5;
+    --on-dark-soft: #a09d96;
+    --hairline: #e6dfd8;
+    --on-primary: #ffffff;
+    --success: #5db872;
+    --success-15: rgba(93,184,114,0.15);
+    --error: #c64545;
+    --sidebar-w: 240px;
+
+    --display: "Microsoft YaHei", "PingFang SC", "Segoe UI", system-ui, sans-serif;
+    --sans: "Segoe UI", -apple-system, system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+    --mono: "Cascadia Code", "JetBrains Mono", "Fira Code", Consolas, monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--canvas);
+    color: var(--body);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ========== LAYOUT ========== */
+  .layout { display: flex; min-height: 100vh; }
+
+  /* ========== SIDEBAR ========== */
+  .sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    background: var(--dark);
+    overflow-y: auto;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    scrollbar-width: thin;
+    scrollbar-color: #3a3835 transparent;
+  }
+  .sidebar-brand {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid #2a2825;
+  }
+  .sidebar-brand-name {
+    font-family: var(--display);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--on-dark);
+    letter-spacing: -0.3px;
+  }
+  .sidebar-brand-sub {
+    font-size: 12px;
+    color: var(--on-dark-soft);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+  .sidebar-section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--on-dark-soft);
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    padding: 20px 16px 6px;
+  }
+  .sidebar-nav {
+    padding: 8px 12px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .sidebar-nav a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 14px;
+    color: var(--on-dark-soft);
+    transition: all 0.15s;
+    line-height: 1.3;
+  }
+  .sidebar-nav a:hover { background: rgba(250,249,245,0.06); color: var(--on-dark); }
+  .sidebar-nav a.active { background: rgba(204,120,92,0.18); color: var(--coral); }
+  .sidebar-nav .nav-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .sidebar-footer {
+    padding: 16px 24px 20px;
+    border-top: 1px solid #2a2825;
+    font-size: 12px;
+    color: var(--on-dark-soft);
+  }
+
+  /* ========== MAIN ========== */
+  .main {
+    margin-left: var(--sidebar-w);
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* ========== HERO ========== */
+  .hero {
+    background: var(--dark);
+    padding: 72px 48px 56px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    top: -120px; right: -80px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(204,120,92,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-inner { max-width: 900px; position: relative; z-index: 1; }
+  .hero h1 {
+    font-family: var(--display);
+    font-size: 42px;
+    font-weight: 600;
+    color: var(--on-dark);
+    letter-spacing: -0.5px;
+    line-height: 1.15;
+    margin-bottom: 16px;
+  }
+  .hero h1 span { color: var(--coral); }
+  .hero p {
+    font-size: 16px;
+    color: var(--on-dark-soft);
+    line-height: 1.6;
+    max-width: 640px;
+  }
+  .hero-stats {
+    display: flex;
+    gap: 32px;
+    margin-top: 32px;
+  }
+  .hero-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .hero-stat-value {
+    font-family: var(--display);
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--coral);
+    letter-spacing: -0.3px;
+  }
+  .hero-stat-label {
+    font-size: 13px;
+    color: var(--on-dark-soft);
+  }
+
+  /* ========== SECTIONS ========== */
+  .section {
+    padding: 64px 48px;
+  }
+  .section + .section {
+    border-top: 1px solid var(--hairline);
+  }
+  .section-header {
+    margin-bottom: 40px;
+  }
+  .section-header h2 {
+    font-family: var(--display);
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.3px;
+    line-height: 1.2;
+  }
+  .section-header p {
+    color: var(--muted);
+    margin-top: 8px;
+    font-size: 15px;
+  }
+
+  /* ========== DATA FLOW DIAGRAM ========== */
+  .flow-diagram {
+    background: var(--dark);
+    border-radius: 12px;
+    padding: 48px 32px;
+    overflow-x: auto;
+  }
+  .flow-track {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-width: 1000px;
+    justify-content: center;
+  }
+  .flow-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .flow-node-box {
+    padding: 14px 20px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--mono);
+    text-align: center;
+    line-height: 1.3;
+    min-width: 110px;
+    position: relative;
+  }
+  .flow-node-box.coral-box {
+    background: rgba(204,120,92,0.18);
+    color: var(--coral);
+    border: 1px solid rgba(204,120,92,0.35);
+  }
+  .flow-node-box.teal-box {
+    background: rgba(93,184,166,0.15);
+    color: var(--teal);
+    border: 1px solid rgba(93,184,166,0.3);
+  }
+  .flow-node-box.amber-box {
+    background: rgba(232,165,90,0.15);
+    color: var(--amber);
+    border: 1px solid rgba(232,165,90,0.3);
+  }
+  .flow-node-box.green-box {
+    background: rgba(93,184,114,0.12);
+    color: var(--success);
+    border: 1px solid rgba(93,184,114,0.3);
+  }
+  .flow-node-label {
+    font-size: 11px;
+    color: var(--on-dark-soft);
+    text-align: center;
+  }
+  .flow-arrow {
+    display: flex;
+    align-items: center;
+    padding: 0 4px;
+    flex-shrink: 0;
+  }
+  .flow-arrow svg {
+    width: 40px;
+    height: 20px;
+  }
+  .flow-arrow-text {
+    font-size: 10px;
+    color: var(--on-dark-soft);
+    text-align: center;
+    margin-top: -2px;
+  }
+
+  /* ========== FLOW DETAIL — VERTICAL ========== */
+  .flow-vertical {
+    margin-top: 48px;
+    position: relative;
+  }
+  .flow-v-line {
+    position: absolute;
+    left: 24px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--coral), var(--teal), var(--amber), var(--success));
+    border-radius: 1px;
+  }
+  .flow-v-step {
+    position: relative;
+    padding-left: 60px;
+    padding-bottom: 32px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .flow-v-step:last-child { padding-bottom: 0; }
+  .flow-v-dot {
+    position: absolute;
+    left: 17px;
+    top: 4px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 3px solid var(--canvas);
+    z-index: 2;
+  }
+  .flow-v-num {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted-soft);
+    flex-shrink: 0;
+    width: 20px;
+    text-align: right;
+    padding-top: 1px;
+  }
+  .flow-v-content {
+    font-size: 14px;
+    color: var(--body);
+    line-height: 1.5;
+  }
+  .flow-v-content code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--card);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--coral-active);
+  }
+
+  /* ========== MODULE CARDS ========== */
+  .module-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .module-card {
+    background: var(--card);
+    border-radius: 12px;
+    overflow: hidden;
+    scroll-margin-top: 24px;
+  }
+  .module-card-header {
+    padding: 24px 28px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .module-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 18px;
+  }
+  .module-card-header h3 {
+    font-family: var(--display);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.2px;
+  }
+  .module-card-header .module-dir {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--muted);
+    margin-left: auto;
+  }
+  .module-card-body {
+    padding: 24px 28px 28px;
+  }
+
+  /* file blocks inside module cards */
+  .file-block {
+    margin-bottom: 20px;
+  }
+  .file-block:last-child { margin-bottom: 0; }
+  .file-name {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--body-strong);
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--hairline);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .file-name::before {
+    content: '';
+    width: 14px; height: 14px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' viewBox='0 0 24 24'%3E%3Cpath stroke='%236c6a64' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z'/%3E%3Cpath stroke='%236c6a64' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' d='M14 2v6h6'/%3E%3C/svg%3E") center/contain no-repeat;
+    flex-shrink: 0;
+  }
+
+  .class-block {
+    background: var(--canvas);
+    border-radius: 8px;
+    border: 1px solid var(--hairline);
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .class-block:last-child { margin-bottom: 0; }
+
+  .class-header {
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .class-badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+  }
+  .badge-class {
+    background: var(--coral-15);
+    color: var(--coral-active);
+  }
+  .badge-dataclass {
+    background: var(--teal-15);
+    color: var(--teal);
+  }
+  .badge-abc {
+    background: var(--amber-15);
+    color: var(--amber);
+  }
+  .badge-func {
+    background: var(--success-15);
+    color: var(--success);
+  }
+  .class-name {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .class-parent {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .class-desc {
+    font-size: 13px;
+    color: var(--muted);
+    margin-left: auto;
+  }
+  .class-methods {
+    padding: 8px 16px;
+  }
+  .method-item {
+    padding: 5px 0;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--body);
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .method-item + .method-item {
+    border-top: 1px solid rgba(230,223,216,0.5);
+  }
+  .method-name {
+    color: var(--coral-active);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .method-sep {
+    color: var(--hairline);
+    flex-shrink: 0;
+  }
+  .method-desc {
+    color: var(--muted);
+    font-family: var(--sans);
+    font-size: 12px;
+  }
+
+  /* standalone function (not in a class) */
+  .func-row {
+    background: var(--canvas);
+    border-radius: 8px;
+    border: 1px solid var(--hairline);
+    padding: 10px 16px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .func-row:last-child { margin-bottom: 0; }
+
+  /* ========== DEPENDENCY GRAPH (SVG) ========== */
+  .dep-graph-wrap {
+    background: var(--dark);
+    border-radius: 12px;
+    padding: 40px 24px;
+    overflow-x: auto;
+  }
+  .dep-graph-wrap svg {
+    display: block;
+    margin: 0 auto;
+  }
+
+  /* ========== GIT TIMELINE ========== */
+  .timeline-section {
+    background: var(--dark);
+  }
+  .timeline-wrap {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .timeline-item {
+    display: flex;
+    gap: 20px;
+    position: relative;
+    padding-bottom: 0;
+  }
+  .timeline-left {
+    width: 80px;
+    flex-shrink: 0;
+    text-align: right;
+    padding-top: 20px;
+  }
+  .timeline-hash {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--coral);
+  }
+  .timeline-idx {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--on-dark-soft);
+    margin-top: 2px;
+  }
+  .timeline-center {
+    width: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .timeline-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--coral);
+    flex-shrink: 0;
+    margin-top: 22px;
+    z-index: 2;
+    box-shadow: 0 0 0 4px var(--dark);
+  }
+  .timeline-line {
+    width: 2px;
+    flex: 1;
+    background: #3a3835;
+  }
+  .timeline-item:last-child .timeline-line { display: none; }
+  .timeline-right {
+    flex: 1;
+    padding: 16px 0 28px;
+  }
+  .timeline-msg {
+    font-size: 15px;
+    color: var(--on-dark);
+    line-height: 1.45;
+    font-weight: 500;
+  }
+  .timeline-detail {
+    font-size: 13px;
+    color: var(--on-dark-soft);
+    margin-top: 4px;
+    line-height: 1.5;
+  }
+  .timeline-tags {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .timeline-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 2px 10px;
+    border-radius: 9999px;
+    border: 1px solid;
+  }
+  .tag-coral { color: var(--coral); border-color: rgba(204,120,92,0.35); }
+  .tag-teal { color: var(--teal); border-color: rgba(93,184,166,0.3); }
+  .tag-amber { color: var(--amber); border-color: rgba(232,165,90,0.3); }
+  .tag-green { color: var(--success); border-color: rgba(93,184,114,0.3); }
+
+  /* ========== MOBILE ========== */
+  .sidebar-toggle {
+    display: none;
+    position: fixed;
+    top: 16px; left: 16px;
+    z-index: 300;
+    width: 40px; height: 40px;
+    border-radius: 8px;
+    background: var(--dark);
+    border: none;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+  }
+  .sidebar-toggle span {
+    display: block;
+    width: 20px; height: 2px;
+    background: var(--on-dark);
+    border-radius: 1px;
+    position: relative;
+  }
+  .sidebar-toggle span::before,
+  .sidebar-toggle span::after {
+    content: '';
+    position: absolute;
+    width: 20px; height: 2px;
+    background: var(--on-dark);
+    border-radius: 1px;
+    left: 0;
+  }
+  .sidebar-toggle span::before { top: -6px; }
+  .sidebar-toggle span::after { top: 6px; }
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(20,20,19,0.5);
+    z-index: 199;
+  }
+
+  @media (max-width: 900px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.25s ease; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-toggle { display: flex; }
+    .sidebar-overlay.visible { display: block; }
+    .main { margin-left: 0; }
+    .hero { padding: 80px 24px 40px; }
+    .hero h1 { font-size: 28px; }
+    .hero-stats { gap: 20px; flex-wrap: wrap; }
+    .hero-stat-value { font-size: 22px; }
+    .section { padding: 40px 20px; }
+    .section-header h2 { font-size: 22px; }
+    .module-card-header { padding: 16px 20px 14px; flex-wrap: wrap; }
+    .module-card-header .module-dir { margin-left: 0; margin-top: 4px; width: 100%; }
+    .module-card-body { padding: 16px 20px 20px; }
+    .flow-track { min-width: 800px; }
+    .class-header { flex-wrap: wrap; }
+    .class-desc { margin-left: 0; margin-top: 4px; width: 100%; }
+  }
+
+  /* ========== ANIMATIONS ========== */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .animate-in {
+    opacity: 0;
+    animation: fadeUp 0.5s ease forwards;
+  }
+  .delay-1 { animation-delay: 0.08s; }
+  .delay-2 { animation-delay: 0.16s; }
+  .delay-3 { animation-delay: 0.24s; }
+  .delay-4 { animation-delay: 0.32s; }
+  .delay-5 { animation-delay: 0.40s; }
+  .delay-6 { animation-delay: 0.48s; }
+  .delay-7 { animation-delay: 0.56s; }
+  .delay-8 { animation-delay: 0.64s; }
+  .delay-9 { animation-delay: 0.72s; }
+</style>
+</head>
+<body>
+
+<!-- Mobile toggle -->
+<button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Toggle menu"><span></span></button>
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<div class="layout">
+
+<!-- ========== SIDEBAR ========== -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-brand-name">bearclaw</div>
+    <div class="sidebar-brand-sub">nanobot 最小实现 &middot; 架构全景</div>
+  </div>
+
+  <div class="sidebar-section-label">Overview</div>
+  <div class="sidebar-nav">
+    <a href="#flow" onclick="closeSidebar()"><span class="nav-dot" style="background:var(--coral)"></span>数据流</a>
+    <a href="#dep-graph" onclick="closeSidebar()"><span class="nav-dot" style="background:var(--teal)"></span>依赖关系图</a>
+  </div>
+
+  <div class="sidebar-section-label">Modules</div>
+  <div class="sidebar-nav">
+    <a href="#mod-entry" onclick="closeSidebar()"><span class="nav-dot" style="background:var(--coral)"></span>main.py 入口</a>
+    <a href="#mod-bus" onclick="closeSidebar()"><span class="nav-dot" style="background:var(--teal)"></span>bus/ 消息总线</a>
+    <a href="#mod-channels" onclick="closeSidebar()"><span class="nav-dot" style="background:var(--amber)"></span>channels/ 渠道</a>
+    <a href="#mod-agent" onclick="closeSidebar()"><span class="nav-dot" style="background:var(--coral)"></span>agent/ 核心</a>
+    <a href="#mod-providers" onclick="closeSidebar()"><span class="nav-dot" style="background:var(--success)"></span>providers/ LLM</a>
+    <a href="#mod-tools" onclick="closeSidebar()"><span class="nav-dot" style="background:var(--amber)"></span>tools/ 工具</a>
+    <a href="#mod-session" onclick="closeSidebar()"><span class="nav-dot" style="background:var(--teal)"></span>session/ 会话</a>
+    <a href="#mod-memory" onclick="closeSidebar()"><span class="nav-dot" style="background:var(--coral)"></span>memory/ 记忆</a>
+    <a href="#mod-utils" onclick="closeSidebar()"><span class="nav-dot" style="background:var(--muted-soft)"></span>utils/ 工具函数</a>
+    <a href="#mod-templates" onclick="closeSidebar()"><span class="nav-dot" style="background:var(--muted-soft)"></span>templates/ 模板</a>
+  </div>
+
+  <div class="sidebar-section-label">History</div>
+  <div class="sidebar-nav">
+    <a href="#git-timeline" onclick="closeSidebar()"><span class="nav-dot" style="background:var(--success)"></span>Git 时间线</a>
+  </div>
+
+  <div class="sidebar-footer">
+    10 commits &middot; 25 source files<br>
+    8 modules &middot; 17 classes
+  </div>
+</nav>
+
+<!-- ========== MAIN ========== -->
+<div class="main">
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="hero-inner">
+      <h1 class="animate-in">bearclaw <span>架构全景</span></h1>
+      <p class="animate-in delay-1">从 mini_agent.py 单文件出发，逐步拆解为模块化架构。每个模块只做减法——与 nanobot 保持一致的接口和命名，去掉尚未学到的复杂性。</p>
+      <div class="hero-stats animate-in delay-2">
+        <div class="hero-stat">
+          <div class="hero-stat-value">8</div>
+          <div class="hero-stat-label">子模块</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-value">17</div>
+          <div class="hero-stat-label">类 / 数据类</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-value">25</div>
+          <div class="hero-stat-label">源文件</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-value">10</div>
+          <div class="hero-stat-label">Git 提交</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========== DATA FLOW ========== -->
+  <section class="section" id="flow">
+    <div class="section-header">
+      <h2>数据流</h2>
+      <p>一条消息从用户输入到响应输出的完整旅程</p>
+    </div>
+
+    <!-- Horizontal flow diagram -->
+    <div class="flow-diagram">
+      <div class="flow-track">
+        <div class="flow-node">
+          <div class="flow-node-box coral-box">User<br>输入</div>
+          <div class="flow-node-label">CLI / Channel</div>
+        </div>
+        <div class="flow-arrow">
+          <svg viewBox="0 0 40 20"><path d="M4 10 H30 M26 5 L32 10 L26 15" stroke="#cc785c" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+        </div>
+        <div class="flow-node">
+          <div class="flow-node-box teal-box">Message<br>Bus</div>
+          <div class="flow-node-label">bus/queue.py</div>
+        </div>
+        <div class="flow-arrow">
+          <svg viewBox="0 0 40 20"><path d="M4 10 H30 M26 5 L32 10 L26 15" stroke="#5db8a6" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+        </div>
+        <div class="flow-node">
+          <div class="flow-node-box coral-box">Agent<br>Loop</div>
+          <div class="flow-node-label">agent/loop.py</div>
+        </div>
+        <div class="flow-arrow">
+          <svg viewBox="0 0 40 20"><path d="M4 10 H30 M26 5 L32 10 L26 15" stroke="#cc785c" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+        </div>
+        <div class="flow-node">
+          <div class="flow-node-box amber-box">Context<br>Builder</div>
+          <div class="flow-node-label">agent/context.py</div>
+        </div>
+        <div class="flow-arrow">
+          <svg viewBox="0 0 40 20"><path d="M4 10 H30 M26 5 L32 10 L26 15" stroke="#e8a55a" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+        </div>
+        <div class="flow-node">
+          <div class="flow-node-box coral-box">Agent<br>Runner</div>
+          <div class="flow-node-label">agent/runner.py</div>
+        </div>
+        <div class="flow-arrow">
+          <svg viewBox="0 0 40 20"><path d="M4 10 H30 M26 5 L32 10 L26 15" stroke="#cc785c" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+        </div>
+        <div class="flow-node">
+          <div class="flow-node-box green-box">LLM<br>Provider</div>
+          <div class="flow-node-label">providers/*.py</div>
+        </div>
+        <div class="flow-arrow">
+          <svg viewBox="0 0 40 20"><path d="M4 10 H30 M26 5 L32 10 L26 15" stroke="#5db872" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+        </div>
+        <div class="flow-node">
+          <div class="flow-node-box amber-box">Tool<br>执行</div>
+          <div class="flow-node-label">tools/*.py</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vertical detailed steps -->
+    <div class="flow-vertical" style="margin-top:40px;">
+      <div class="flow-v-line"></div>
+
+      <div class="flow-v-step">
+        <div class="flow-v-dot" style="background:var(--coral)"></div>
+        <div class="flow-v-num">1</div>
+        <div class="flow-v-content"><code>main.py</code> 创建 <code>MessageBus</code> + <code>make_provider()</code> + <code>load_tools()</code> + <code>AgentLoop</code>，启动异步事件循环</div>
+      </div>
+
+      <div class="flow-v-step">
+        <div class="flow-v-dot" style="background:var(--coral)"></div>
+        <div class="flow-v-num">2</div>
+        <div class="flow-v-content">用户输入 &rarr; 封装为 <code>InboundMessage</code> &rarr; <code>bus.publish_inbound()</code></div>
+      </div>
+
+      <div class="flow-v-step">
+        <div class="flow-v-dot" style="background:var(--teal)"></div>
+        <div class="flow-v-num">3</div>
+        <div class="flow-v-content"><code>AgentLoop.run()</code> 消费 inbound &rarr; <code>SessionManager.get_or_create()</code> 获取/创建 session</div>
+      </div>
+
+      <div class="flow-v-step">
+        <div class="flow-v-dot" style="background:var(--teal)"></div>
+        <div class="flow-v-num">4</div>
+        <div class="flow-v-content"><code>Consolidator.maybe_consolidate()</code> 模拟完整 prompt 链估算 token，超限则切割并调用 LLM 生成摘要</div>
+      </div>
+
+      <div class="flow-v-step">
+        <div class="flow-v-dot" style="background:var(--amber)"></div>
+        <div class="flow-v-num">5</div>
+        <div class="flow-v-content"><code>ContextBuilder.build_messages()</code> 组装完整上下文：identity 模板 + bootstrap 文件 + 压缩摘要 + 对话历史</div>
+      </div>
+
+      <div class="flow-v-step">
+        <div class="flow-v-dot" style="background:var(--coral)"></div>
+        <div class="flow-v-num">6</div>
+        <div class="flow-v-content"><code>AgentRunner.run()</code> 多轮 LLM 对话循环：<code>provider.chat()</code> &rarr; 解析 <code>tool_calls</code> &rarr; <code>ToolRegistry.run()</code> &rarr; 追加结果</div>
+      </div>
+
+      <div class="flow-v-step">
+        <div class="flow-v-dot" style="background:var(--success)"></div>
+        <div class="flow-v-num">7</div>
+        <div class="flow-v-content"><code>SessionManager.save()</code> 持久化会话 &rarr; <code>Dream.run()</code> 消费压缩摘要，用受限工具编辑记忆文件</div>
+      </div>
+
+      <div class="flow-v-step">
+        <div class="flow-v-dot" style="background:var(--success)"></div>
+        <div class="flow-v-num">8</div>
+        <div class="flow-v-content">提取最后一条 assistant 消息 &rarr; <code>OutboundMessage</code> &rarr; <code>bus.publish_outbound()</code> &rarr; 显示给用户</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== DEPENDENCY GRAPH ========== -->
+  <section class="section" id="dep-graph">
+    <div class="section-header">
+      <h2>模块依赖关系</h2>
+      <p>箭头表示"依赖 / 调用"方向，颜色对应模块</p>
+    </div>
+
+    <div class="dep-graph-wrap">
+      <svg viewBox="0 0 860 520" width="860" height="520" xmlns="http://www.w3.org/2000/svg" style="font-family:'Cascadia Code','JetBrains Mono',monospace">
+        <!-- Defs -->
+        <defs>
+          <marker id="arrow-coral" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <path d="M0 0 L8 3 L0 6Z" fill="#cc785c"/>
+          </marker>
+          <marker id="arrow-teal" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <path d="M0 0 L8 3 L0 6Z" fill="#5db8a6"/>
+          </marker>
+          <marker id="arrow-amber" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <path d="M0 0 L8 3 L0 6Z" fill="#e8a55a"/>
+          </marker>
+          <marker id="arrow-green" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <path d="M0 0 L8 3 L0 6Z" fill="#5db872"/>
+          </marker>
+          <marker id="arrow-muted" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <path d="M0 0 L8 3 L0 6Z" fill="#6c6a64"/>
+          </marker>
+        </defs>
+
+        <!-- ── NODES ── -->
+        <!-- main.py -->
+        <rect x="360" y="16" width="140" height="40" rx="8" fill="rgba(204,120,92,0.18)" stroke="#cc785c" stroke-width="1.2"/>
+        <text x="430" y="41" text-anchor="middle" fill="#cc785c" font-size="13" font-weight="600">main.py</text>
+
+        <!-- bus/ -->
+        <rect x="100" y="110" width="140" height="40" rx="8" fill="rgba(93,184,166,0.15)" stroke="#5db8a6" stroke-width="1.2"/>
+        <text x="170" y="135" text-anchor="middle" fill="#5db8a6" font-size="13" font-weight="600">bus/</text>
+
+        <!-- channels/ -->
+        <rect x="100" y="210" width="140" height="40" rx="8" fill="rgba(232,165,90,0.15)" stroke="#e8a55a" stroke-width="1.2"/>
+        <text x="170" y="235" text-anchor="middle" fill="#e8a55a" font-size="13" font-weight="600">channels/</text>
+
+        <!-- agent/ -->
+        <rect x="360" y="110" width="140" height="40" rx="8" fill="rgba(204,120,92,0.18)" stroke="#cc785c" stroke-width="1.2"/>
+        <text x="430" y="135" text-anchor="middle" fill="#cc785c" font-size="13" font-weight="600">agent/</text>
+
+        <!-- providers/ -->
+        <rect x="620" y="110" width="140" height="40" rx="8" fill="rgba(93,184,114,0.12)" stroke="#5db872" stroke-width="1.2"/>
+        <text x="690" y="135" text-anchor="middle" fill="#5db872" font-size="13" font-weight="600">providers/</text>
+
+        <!-- tools/ -->
+        <rect x="620" y="210" width="140" height="40" rx="8" fill="rgba(232,165,90,0.15)" stroke="#e8a55a" stroke-width="1.2"/>
+        <text x="690" y="235" text-anchor="middle" fill="#e8a55a" font-size="13" font-weight="600">tools/</text>
+
+        <!-- session/ -->
+        <rect x="280" y="260" width="140" height="40" rx="8" fill="rgba(93,184,166,0.15)" stroke="#5db8a6" stroke-width="1.2"/>
+        <text x="350" y="285" text-anchor="middle" fill="#5db8a6" font-size="13" font-weight="600">session/</text>
+
+        <!-- memory/ -->
+        <rect x="460" y="260" width="140" height="40" rx="8" fill="rgba(204,120,92,0.18)" stroke="#cc785c" stroke-width="1.2"/>
+        <text x="530" y="285" text-anchor="middle" fill="#cc785c" font-size="13" font-weight="600">memory/</text>
+
+        <!-- utils/ -->
+        <rect x="280" y="370" width="140" height="40" rx="8" fill="rgba(142,139,130,0.15)" stroke="#8e8b82" stroke-width="1.2"/>
+        <text x="350" y="395" text-anchor="middle" fill="#8e8b82" font-size="13" font-weight="600">utils/</text>
+
+        <!-- templates/ -->
+        <rect x="460" y="370" width="140" height="40" rx="8" fill="rgba(142,139,130,0.15)" stroke="#8e8b82" stroke-width="1.2"/>
+        <text x="530" y="395" text-anchor="middle" fill="#8e8b82" font-size="13" font-weight="600">templates/</text>
+
+        <!-- ── EDGES ── -->
+        <!-- main → bus -->
+        <path d="M400 56 Q340 83 220 110" fill="none" stroke="#cc785c" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arrow-coral)"/>
+        <!-- main → agent -->
+        <path d="M430 56 L430 102" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
+        <!-- main → providers -->
+        <path d="M460 56 Q540 83 660 110" fill="none" stroke="#cc785c" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arrow-coral)"/>
+        <!-- main → tools -->
+        <path d="M500 46 Q750 60 710 202" fill="none" stroke="#cc785c" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arrow-coral)"/>
+
+        <!-- agent → bus -->
+        <path d="M360 130 L248 130" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
+        <!-- agent → providers -->
+        <path d="M500 130 L612 130" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
+        <!-- agent → tools -->
+        <path d="M490 150 Q590 175 640 210" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
+        <!-- agent → session -->
+        <path d="M400 150 Q370 200 350 252" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
+        <!-- agent → memory -->
+        <path d="M460 150 Q490 200 520 252" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
+        <!-- agent → utils (context uses prompt_templates) -->
+        <path d="M380 150 Q350 310 350 362" fill="none" stroke="#6c6a64" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-muted)"/>
+
+        <!-- channels → bus -->
+        <path d="M170 210 L170 158" fill="none" stroke="#e8a55a" stroke-width="1.2" marker-end="url(#arrow-amber)"/>
+
+        <!-- memory → utils (helpers: estimate_*) -->
+        <path d="M530 300 Q490 340 430 370" fill="none" stroke="#6c6a64" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-muted)"/>
+
+        <!-- memory → utils (prompt_templates) -->
+        <path d="M510 300 Q470 340 420 370" fill="none" stroke="#6c6a64" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-muted)"/>
+        <!-- memory → tools (dream tools) -->
+        <path d="M600 275 Q650 260 650 250" fill="none" stroke="#cc785c" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-coral)"/>
+
+        <!-- utils → templates -->
+        <path d="M420 390 L452 390" fill="none" stroke="#6c6a64" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-muted)"/>
+
+        <!-- ── LEGEND ── -->
+        <rect x="80" y="440" width="700" height="60" rx="8" fill="rgba(250,249,245,0.04)" stroke="rgba(250,249,245,0.08)" stroke-width="1"/>
+        <text x="100" y="463" fill="#8e8b82" font-size="11" font-weight="600" letter-spacing="1">LEGEND</text>
+
+        <line x1="100" y1="484" x2="130" y2="484" stroke="#cc785c" stroke-width="1.5"/>
+        <text x="136" y="488" fill="#a09d96" font-size="11">直接依赖</text>
+
+        <line x1="230" y1="484" x2="260" y2="484" stroke="#6c6a64" stroke-width="1" stroke-dasharray="4 3"/>
+        <text x="266" y="488" fill="#a09d96" font-size="11">间接 / 辅助依赖</text>
+
+        <rect x="410" y="476" width="12" height="12" rx="3" fill="rgba(204,120,92,0.18)" stroke="#cc785c" stroke-width="0.8"/>
+        <text x="428" y="487" fill="#a09d96" font-size="11">核心模块</text>
+
+        <rect x="520" y="476" width="12" height="12" rx="3" fill="rgba(93,184,166,0.15)" stroke="#5db8a6" stroke-width="0.8"/>
+        <text x="538" y="487" fill="#a09d96" font-size="11">数据 / 存储</text>
+
+        <rect x="630" y="476" width="12" height="12" rx="3" fill="rgba(142,139,130,0.15)" stroke="#8e8b82" stroke-width="0.8"/>
+        <text x="648" y="487" fill="#a09d96" font-size="11">工具 / 辅助</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ========== MODULE CARDS ========== -->
+  <section class="section" id="modules">
+    <div class="section-header">
+      <h2>模块详情</h2>
+      <p>每个模块的文件、类、方法一览</p>
+    </div>
+
+    <div class="module-grid">
+
+      <!-- ── main.py ── -->
+      <div class="module-card animate-in" id="mod-entry">
+        <div class="module-card-header">
+          <div class="module-icon" style="background:var(--coral-15)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--coral)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+          <h3>入口</h3>
+          <span class="module-dir">main.py</span>
+        </div>
+        <div class="module-card-body">
+          <div class="file-block">
+            <div class="file-name">main.py</div>
+            <div class="func-row">
+              <span class="class-badge badge-func">FUNC</span>
+              <span class="class-name">main()</span>
+              <span class="class-desc">创建 MessageBus, Provider, Tools, AgentLoop，启动 CLI 交互循环</span>
+            </div>
+            <div class="func-row">
+              <span class="class-badge badge-func">FUNC</span>
+              <span class="class-name">consume_outbound()</span>
+              <span class="class-desc">异步消费出站消息并打印到终端</span>
+            </div>
+          </div>
+          <div class="file-block">
+            <div class="file-name">mini_agent.py <span style="color:var(--muted-soft);font-weight:400;font-size:12px">（原始单文件，已归档）</span></div>
+            <div class="func-row">
+              <span class="class-badge badge-func">FUNC</span>
+              <span class="class-name">agent_loop()</span>
+              <span class="class-desc">最初的同步 agent 循环，所有逻辑在一个文件中</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── bus/ ── -->
+      <div class="module-card animate-in" id="mod-bus">
+        <div class="module-card-header">
+          <div class="module-icon" style="background:var(--teal-15)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="12" x2="2" y2="12"/><polyline points="15 5 22 12 15 19"/><polyline points="9 19 2 12 9 5"/></svg>
+          </div>
+          <h3>消息总线</h3>
+          <span class="module-dir">bus/</span>
+        </div>
+        <div class="module-card-body">
+          <div class="file-block">
+            <div class="file-name">events.py</div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-dataclass">DATACLASS</span>
+                <span class="class-name">InboundMessage</span>
+                <span class="class-desc">入站消息</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">channel, sender_id, chat_id, content, timestamp, metadata</span></div>
+                <div class="method-item"><span class="method-name">session_key</span> <span class="method-sep">&mdash;</span> <span class="method-desc">property: 返回 {channel}_{chat_id}</span></div>
+              </div>
+            </div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-dataclass">DATACLASS</span>
+                <span class="class-name">OutboundMessage</span>
+                <span class="class-desc">出站消息</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">channel, chat_id, content, metadata</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="file-block">
+            <div class="file-name">queue.py</div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-class">CLASS</span>
+                <span class="class-name">MessageBus</span>
+                <span class="class-desc">双向异步队列</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">publish_inbound(msg)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">发布入站消息</span></div>
+                <div class="method-item"><span class="method-name">consume_inbound()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">消费入站消息</span></div>
+                <div class="method-item"><span class="method-name">publish_outbound(msg)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">发布出站消息</span></div>
+                <div class="method-item"><span class="method-name">consume_outbound()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">消费出站消息</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── channels/ ── -->
+      <div class="module-card animate-in" id="mod-channels">
+        <div class="module-card-header">
+          <div class="module-icon" style="background:var(--amber-15)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <h3>渠道抽象</h3>
+          <span class="module-dir">channels/</span>
+        </div>
+        <div class="module-card-body">
+          <div class="file-block">
+            <div class="file-name">base.py</div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-abc">ABC</span>
+                <span class="class-name">BaseChannel</span>
+                <span class="class-desc">渠道基类，接入外部平台</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">start()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">启动渠道 (abstract)</span></div>
+                <div class="method-item"><span class="method-name">stop()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">停止渠道 (abstract)</span></div>
+                <div class="method-item"><span class="method-name">send(msg)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">发送出站消息 (abstract)</span></div>
+                <div class="method-item"><span class="method-name">_handle_message()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">封装 InboundMessage 并发布到 bus</span></div>
+                <div class="method-item"><span class="method-name">is_running</span> <span class="method-sep">&mdash;</span> <span class="method-desc">property: 运行状态</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── agent/ ── -->
+      <div class="module-card animate-in" id="mod-agent">
+        <div class="module-card-header">
+          <div class="module-icon" style="background:var(--coral-15)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--coral)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </div>
+          <h3>Agent 核心</h3>
+          <span class="module-dir">agent/</span>
+        </div>
+        <div class="module-card-body">
+          <div class="file-block">
+            <div class="file-name">loop.py</div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-class">CLASS</span>
+                <span class="class-name">AgentLoop</span>
+                <span class="class-desc">主循环，协调所有子系统</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">__init__(bus, provider, tools, workspace)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">初始化 SessionManager, MemoryStore, Consolidator, Dream, AgentRunner, ContextBuilder</span></div>
+                <div class="method-item"><span class="method-name">run()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">消费 inbound &rarr; 压缩 &rarr; 构建上下文 &rarr; runner &rarr; save &rarr; dream &rarr; 发布 outbound</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="file-block">
+            <div class="file-name">runner.py</div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-dataclass">DATACLASS</span>
+                <span class="class-name">AgentRunSpec</span>
+                <span class="class-desc">运行规格</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">initial_messages, tools, provider, max_iterations</span></div>
+              </div>
+            </div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-class">CLASS</span>
+                <span class="class-name">AgentRunner</span>
+                <span class="class-desc">LLM 对话 + 工具执行器</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">run(spec, session)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">多轮循环：provider.chat() &rarr; 解析 tool_calls &rarr; ToolRegistry.run() &rarr; 追加结果</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="file-block">
+            <div class="file-name">context.py</div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-class">CLASS</span>
+                <span class="class-name">ContextBuilder</span>
+                <span class="class-desc">上下文构建器</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">build_system_prompt(session_summary, workspace)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">组装系统提示词：identity + bootstrap + summary</span></div>
+                <div class="method-item"><span class="method-name">build_messages(history, current_message, session_summary)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">构建完整消息列表</span></div>
+                <div class="method-item"><span class="method-name">_get_identity()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">渲染 identity.md 模板</span></div>
+                <div class="method-item"><span class="method-name">_load_bootstrap_files()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">加载 AGENTS.md, SOUL.md, USER.md</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── providers/ ── -->
+      <div class="module-card animate-in" id="mod-providers">
+        <div class="module-card-header">
+          <div class="module-icon" style="background:var(--success-15)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><line x1="2" y1="20" x2="2.01" y2="20"/></svg>
+          </div>
+          <h3>LLM 提供者</h3>
+          <span class="module-dir">providers/</span>
+        </div>
+        <div class="module-card-body">
+          <div class="file-block">
+            <div class="file-name">base.py</div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-dataclass">DATACLASS</span>
+                <span class="class-name">ToolCallRequest</span>
+                <span class="class-desc">工具调用请求</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">id, name, args</span></div>
+              </div>
+            </div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-dataclass">DATACLASS</span>
+                <span class="class-name">LLMResponse</span>
+                <span class="class-desc">统一 LLM 响应</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">content, tool_calls, finish_reason</span></div>
+                <div class="method-item"><span class="method-name">has_tool_calls</span> <span class="method-sep">&mdash;</span> <span class="method-desc">property: 是否包含工具调用</span></div>
+              </div>
+            </div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-abc">ABC</span>
+                <span class="class-name">LLMProvider</span>
+                <span class="class-desc">提供者基类</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">chat(messages, tools, model, max_tokens)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">发送消息到 LLM (abstract)</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="file-block">
+            <div class="file-name">anthropic_provider.py</div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-class">CLASS</span>
+                <span class="class-name">AnthropicProvider</span>
+                <span class="class-parent">(LLMProvider)</span>
+                <span class="class-desc">Anthropic SDK 适配</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">chat()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">转换消息格式 &rarr; 调用 API &rarr; 解析响应</span></div>
+                <div class="method-item"><span class="method-name">_convert_messages()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">统一格式 &rarr; Anthropic 格式（system 提取、tool_result 合并）</span></div>
+                <div class="method-item"><span class="method-name">_convert_tools()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">OpenAI function 格式 &rarr; Anthropic input_schema 格式</span></div>
+                <div class="method-item"><span class="method-name">_parse_response()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">Anthropic 响应 &rarr; 统一 LLMResponse</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="file-block">
+            <div class="file-name">openai_compat_provider.py</div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-class">CLASS</span>
+                <span class="class-name">OpenAICompatProvider</span>
+                <span class="class-parent">(LLMProvider)</span>
+                <span class="class-desc">OpenAI 兼容 API 适配</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">chat()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">直接调用 OpenAI SDK</span></div>
+                <div class="method-item"><span class="method-name">_parse()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">OpenAI 响应 &rarr; 统一 LLMResponse</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="file-block">
+            <div class="file-name">factory.py</div>
+            <div class="func-row">
+              <span class="class-badge badge-func">FUNC</span>
+              <span class="class-name">make_provider()</span>
+              <span class="class-desc">根据 LLM_BACKEND 环境变量创建对应 provider 实例</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── tools/ ── -->
+      <div class="module-card animate-in" id="mod-tools">
+        <div class="module-card-header">
+          <div class="module-icon" style="background:var(--amber-15)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+          </div>
+          <h3>工具系统</h3>
+          <span class="module-dir">tools/</span>
+        </div>
+        <div class="module-card-body">
+          <div class="file-block">
+            <div class="file-name">base.py</div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-abc">ABC</span>
+                <span class="class-name">Tool</span>
+                <span class="class-desc">工具基类</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">name, description, params</span> <span class="method-sep">&mdash;</span> <span class="method-desc">类属性</span></div>
+                <div class="method-item"><span class="method-name">run(**kwargs)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">执行工具 (abstract)</span></div>
+                <div class="method-item"><span class="method-name">to_schema()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">生成 OpenAI function 格式的 JSON Schema</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="file-block">
+            <div class="file-name">registry.py</div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-class">CLASS</span>
+                <span class="class-name">ToolRegistry</span>
+                <span class="class-desc">工具注册表</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">register(tool)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">注册工具实例</span></div>
+                <div class="method-item"><span class="method-name">get(name)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">按名称获取工具</span></div>
+                <div class="method-item"><span class="method-name">has(name)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">检查工具是否存在</span></div>
+                <div class="method-item"><span class="method-name">get_schema()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">返回所有工具的 JSON Schema 列表</span></div>
+                <div class="method-item"><span class="method-name">run(name, **kwargs)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">执行指定工具</span></div>
+                <div class="method-item"><span class="method-name">tool_names</span> <span class="method-sep">&mdash;</span> <span class="method-desc">property: 所有工具名列表</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="file-block">
+            <div class="file-name">loader.py</div>
+            <div class="func-row">
+              <span class="class-badge badge-func">FUNC</span>
+              <span class="class-name">load_tools()</span>
+              <span class="class-desc">pkgutil 自动扫描 tools/ 目录，发现并注册所有 Tool 子类</span>
+            </div>
+          </div>
+
+          <div class="file-block">
+            <div class="file-name">bash.py</div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-class">CLASS</span>
+                <span class="class-name">BashTool</span>
+                <span class="class-parent">(Tool)</span>
+                <span class="class-desc">Shell 命令执行</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">run(command)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">subprocess.run() 执行命令，120s 超时</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="file-block">
+            <div class="file-name">filesystem.py</div>
+            <div class="func-row">
+              <span class="class-badge badge-func">FUNC</span>
+              <span class="class-name">safe_path(p)</span>
+              <span class="class-desc">路径安全检查，防止逃离工作区</span>
+            </div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-class">CLASS</span>
+                <span class="class-name">ReadFileTool</span>
+                <span class="class-parent">(Tool)</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">run(path, limit?)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">读取文件内容，支持行数限制</span></div>
+              </div>
+            </div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-class">CLASS</span>
+                <span class="class-name">WriteFileTool</span>
+                <span class="class-parent">(Tool)</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">run(path, content)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">写入文件，自动创建父目录</span></div>
+              </div>
+            </div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-class">CLASS</span>
+                <span class="class-name">EditFileTool</span>
+                <span class="class-parent">(Tool)</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">run(path, old_text, new_text)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">精确替换文件中的文本（一次）</span></div>
+              </div>
+            </div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-class">CLASS</span>
+                <span class="class-name">GlobTool</span>
+                <span class="class-parent">(Tool)</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">run(pattern)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">glob 模式匹配查找文件</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── session/ ── -->
+      <div class="module-card animate-in" id="mod-session">
+        <div class="module-card-header">
+          <div class="module-icon" style="background:var(--teal-15)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </div>
+          <h3>会话管理</h3>
+          <span class="module-dir">session/</span>
+        </div>
+        <div class="module-card-body">
+          <div class="file-block">
+            <div class="file-name">manager.py</div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-dataclass">DATACLASS</span>
+                <span class="class-name">Session</span>
+                <span class="class-desc">会话数据</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">key, last_consolidated, messages, created_at, updated_at, metadata</span></div>
+                <div class="method-item"><span class="method-name">add_message(role, content)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">添加消息并更新时间戳</span></div>
+                <div class="method-item"><span class="method-name">get_history()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">获取 last_consolidated 之后的消息</span></div>
+                <div class="method-item"><span class="method-name">clear()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">清空消息</span></div>
+                <div class="method-item"><span class="method-name">estimate_tokens()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">估算当前活跃消息的 token 数</span></div>
+              </div>
+            </div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-class">CLASS</span>
+                <span class="class-name">SessionManager</span>
+                <span class="class-desc">会话持久化 (JSONL)</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">get_or_create(key)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">加载或新建 session</span></div>
+                <div class="method-item"><span class="method-name">save(session)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">原子写入 JSONL 文件（tmp + fsync + replace）</span></div>
+                <div class="method-item"><span class="method-name">_load(key)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">从 JSONL 文件解析 session</span></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── memory/ ── -->
+      <div class="module-card animate-in" id="mod-memory">
+        <div class="module-card-header">
+          <div class="module-icon" style="background:var(--coral-15)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--coral)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><circle cx="12" cy="12" r="10"/></svg>
+          </div>
+          <h3>记忆系统</h3>
+          <span class="module-dir">memory/</span>
+        </div>
+        <div class="module-card-body">
+          <div class="file-block">
+            <div class="file-name">store.py</div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-class">CLASS</span>
+                <span class="class-name">MemoryStore</span>
+                <span class="class-desc">历史记录存储 (JSONL)</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">append_history(entry, session_key?)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">追加历史记录，自动分配 cursor</span></div>
+                <div class="method-item"><span class="method-name">read_unprocessed_history(since_cursor)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">读取未处理的历史记录</span></div>
+                <div class="method-item"><span class="method-name">get_last_dream_cursor()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">获取 dream 上次处理位置</span></div>
+                <div class="method-item"><span class="method-name">set_last_dream_cursor(cursor)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">推进 dream cursor</span></div>
+                <div class="method-item"><span class="method-name">build_dream_prompt(max_entries?)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">组装 dream prompt：模板 + 当前记忆文件 + 历史</span></div>
+                <div class="method-item"><span class="method-name">build_dream_tools()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">创建受限 ToolRegistry（只含 read/write/edit）</span></div>
+              </div>
+            </div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-class">CLASS</span>
+                <span class="class-name">Consolidator</span>
+                <span class="class-desc">上下文压缩器（接收 build_messages / get_tool_definitions 回调）</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">estimate_session_prompt_tokens(session)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">模拟完整 prompt 链（系统提示+历史+工具）估算总 token</span></div>
+                <div class="method-item"><span class="method-name">pick_consolidation_boundary(session, tokens_to_remove)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">在 user 消息边界找安全切割点，返回 (idx, removed_tokens)</span></div>
+                <div class="method-item"><span class="method-name">archive(messages, provider)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">调用 LLM 生成摘要 &rarr; 存入 MemoryStore</span></div>
+                <div class="method-item"><span class="method-name">maybe_consolidate(session, provider, ...)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">自动检测 token 超限 &rarr; 多轮切割压缩</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="file-block">
+            <div class="file-name">dream.py</div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-class">CLASS</span>
+                <span class="class-name">Dream</span>
+                <span class="class-desc">记忆整合（二阶段记忆）</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">run()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">build_dream_prompt() &rarr; AgentRunner 执行（用受限工具编辑记忆文件）&rarr; 推进 cursor</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── utils/ ── -->
+      <div class="module-card animate-in" id="mod-utils">
+        <div class="module-card-header">
+          <div class="module-icon" style="background:rgba(142,139,130,0.15)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </div>
+          <h3>工具函数</h3>
+          <span class="module-dir">utils/</span>
+        </div>
+        <div class="module-card-body">
+          <div class="file-block">
+            <div class="file-name">prompt_templates.py</div>
+            <div class="func-row">
+              <span class="class-badge badge-func">FUNC</span>
+              <span class="class-name">render_template(name, strip?, **kwargs)</span>
+              <span class="class-desc">Jinja2 模板渲染，从 templates/ 目录加载</span>
+            </div>
+          </div>
+          <div class="file-block">
+            <div class="file-name">helpers.py</div>
+            <div class="func-row">
+              <span class="class-badge badge-func">FUNC</span>
+              <span class="class-name">sync_workspace_templates(workspace)</span>
+              <span class="class-desc">同步 AGENTS.md / SOUL.md / USER.md 默认模板到工作区</span>
+            </div>
+            <div class="func-row">
+              <span class="class-badge badge-func">FUNC</span>
+              <span class="class-name">estimate_message_tokens(message)</span>
+              <span class="class-desc">tiktoken (cl100k_base) 估算单条消息 token 数</span>
+            </div>
+            <div class="func-row">
+              <span class="class-badge badge-func">FUNC</span>
+              <span class="class-name">estimate_prompt_tokens(messages, tools?)</span>
+              <span class="class-desc">估算完整 prompt 链（所有消息 + 工具定义）的总 token 数</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── templates/ ── -->
+      <div class="module-card animate-in" id="mod-templates">
+        <div class="module-card-header">
+          <div class="module-icon" style="background:rgba(142,139,130,0.15)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <h3>模板文件</h3>
+          <span class="module-dir">templates/</span>
+        </div>
+        <div class="module-card-body">
+          <div class="file-block" style="margin-bottom:0">
+            <div class="file-name" style="border-bottom:none;margin-bottom:0;padding-bottom:0">Jinja2 / Markdown 模板，由 prompt_templates.render_template() 和 helpers.sync_workspace_templates() 使用</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;">
+              <span style="font-family:var(--mono);font-size:13px;background:var(--canvas);border:1px solid var(--hairline);border-radius:6px;padding:6px 14px;color:var(--body-strong)">identity.md</span>
+              <span style="font-family:var(--mono);font-size:13px;background:var(--canvas);border:1px solid var(--hairline);border-radius:6px;padding:6px 14px;color:var(--body-strong)">dream.md</span>
+              <span style="font-family:var(--mono);font-size:13px;background:var(--canvas);border:1px solid var(--hairline);border-radius:6px;padding:6px 14px;color:var(--body-strong)">consolidator_archive.md</span>
+              <span style="font-family:var(--mono);font-size:13px;background:var(--canvas);border:1px solid var(--hairline);border-radius:6px;padding:6px 14px;color:var(--body-strong)">AGENTS.md</span>
+              <span style="font-family:var(--mono);font-size:13px;background:var(--canvas);border:1px solid var(--hairline);border-radius:6px;padding:6px 14px;color:var(--body-strong)">SOUL.md</span>
+              <span style="font-family:var(--mono);font-size:13px;background:var(--canvas);border:1px solid var(--hairline);border-radius:6px;padding:6px 14px;color:var(--body-strong)">USER.md</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /module-grid -->
+  </section>
+
+  <!-- ========== GIT TIMELINE ========== -->
+  <section class="section timeline-section" id="git-timeline">
+    <div class="section-header" style="padding:0 0 40px;">
+      <h2 style="color:var(--on-dark)">Git 演进时间线</h2>
+      <p style="color:var(--on-dark-soft)">从单文件 mini_agent 到模块化架构的 10 步旅程</p>
+    </div>
+
+    <div class="timeline-wrap">
+
+      <div class="timeline-item">
+        <div class="timeline-left">
+          <div class="timeline-hash">7e63752</div>
+          <div class="timeline-idx">#1</div>
+        </div>
+        <div class="timeline-center"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
+        <div class="timeline-right">
+          <div class="timeline-msg">bearclaw mini agent: tool system WIP</div>
+          <div class="timeline-detail">起步：单文件 mini_agent.py，内联所有工具定义和执行逻辑</div>
+          <div class="timeline-tags"><span class="timeline-tag tag-coral">mini_agent.py</span></div>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-left">
+          <div class="timeline-hash">54b49cb</div>
+          <div class="timeline-idx">#2</div>
+        </div>
+        <div class="timeline-center"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
+        <div class="timeline-right">
+          <div class="timeline-msg">add architecture &amp; roadmap HTML notes</div>
+          <div class="timeline-detail">规划路线图，明确从最小实现到完整架构的学习路径</div>
+          <div class="timeline-tags"><span class="timeline-tag tag-amber">html/</span></div>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-left">
+          <div class="timeline-hash">bffb59d</div>
+          <div class="timeline-idx">#3</div>
+        </div>
+        <div class="timeline-center"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
+        <div class="timeline-right">
+          <div class="timeline-msg">工具系统：可插拔，自动发现注册</div>
+          <div class="timeline-detail">拆出 Tool 基类 + ToolRegistry + pkgutil 自动发现。加一个工具 = 写一个文件，框架自动注册</div>
+          <div class="timeline-tags">
+            <span class="timeline-tag tag-amber">tools/base.py</span>
+            <span class="timeline-tag tag-amber">tools/registry.py</span>
+            <span class="timeline-tag tag-amber">tools/loader.py</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-left">
+          <div class="timeline-hash">7dd676d</div>
+          <div class="timeline-idx">#4</div>
+        </div>
+        <div class="timeline-center"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
+        <div class="timeline-right">
+          <div class="timeline-msg">Provider 抽象，统一 LLMResponse</div>
+          <div class="timeline-detail">LLMProvider 基类 + AnthropicProvider + OpenAICompatProvider + 工厂函数</div>
+          <div class="timeline-tags">
+            <span class="timeline-tag tag-green">providers/base.py</span>
+            <span class="timeline-tag tag-green">providers/factory.py</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-left">
+          <div class="timeline-hash">8bac35b</div>
+          <div class="timeline-idx">#5</div>
+        </div>
+        <div class="timeline-center"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
+        <div class="timeline-right">
+          <div class="timeline-msg">记忆与会话 Session</div>
+          <div class="timeline-detail">Session 数据类 + SessionManager（JSONL 持久化）+ MemoryStore（历史记录 + cursor）</div>
+          <div class="timeline-tags">
+            <span class="timeline-tag tag-teal">session/manager.py</span>
+            <span class="timeline-tag tag-coral">memory/store.py</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-left">
+          <div class="timeline-hash">fd1e652</div>
+          <div class="timeline-idx">#6</div>
+        </div>
+        <div class="timeline-center"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
+        <div class="timeline-right">
+          <div class="timeline-msg">会话压缩 AutoCompact</div>
+          <div class="timeline-detail">Consolidator：当上下文 token 超限时，自动切割并调用 LLM 生成摘要替代原文</div>
+          <div class="timeline-tags">
+            <span class="timeline-tag tag-coral">memory/store.py (Consolidator)</span>
+            <span class="timeline-tag tag-amber">utils/helpers.py (estimate_*)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-left">
+          <div class="timeline-hash">db40726</div>
+          <div class="timeline-idx">#7</div>
+        </div>
+        <div class="timeline-center"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
+        <div class="timeline-right">
+          <div class="timeline-msg">提示词模板系统 Jinja2</div>
+          <div class="timeline-detail">Jinja2 统一管理模板，变量替换占位符。identity.md / dream.md / consolidator_archive.md</div>
+          <div class="timeline-tags">
+            <span class="timeline-tag tag-amber">utils/prompt_templates.py</span>
+            <span class="timeline-tag tag-amber">templates/</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-left">
+          <div class="timeline-hash">f3d5aec</div>
+          <div class="timeline-idx">#8</div>
+        </div>
+        <div class="timeline-center"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
+        <div class="timeline-right">
+          <div class="timeline-msg">Dream 记忆整合 + AgentRunner 独立</div>
+          <div class="timeline-detail">提取 AgentRunner 为独立执行器。Dream 定期消费压缩摘要，用受限工具编辑记忆文件</div>
+          <div class="timeline-tags">
+            <span class="timeline-tag tag-coral">agent/runner.py</span>
+            <span class="timeline-tag tag-coral">memory/dream.py</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-left">
+          <div class="timeline-hash">85444a9</div>
+          <div class="timeline-idx">#9</div>
+        </div>
+        <div class="timeline-center"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
+        <div class="timeline-right">
+          <div class="timeline-msg">消息总线与渠道</div>
+          <div class="timeline-detail">MessageBus 异步双向队列 + BaseChannel 抽象 + CLI 管道。彻底解耦"消息从哪来"和"消息怎么处理"</div>
+          <div class="timeline-tags">
+            <span class="timeline-tag tag-teal">bus/</span>
+            <span class="timeline-tag tag-amber">channels/</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-left">
+          <div class="timeline-hash">0e79d16</div>
+          <div class="timeline-idx">#10</div>
+        </div>
+        <div class="timeline-center"><div class="timeline-dot" style="background:var(--success);box-shadow:0 0 0 4px var(--dark),0 0 12px rgba(93,184,114,0.4)"></div><div class="timeline-line"></div></div>
+        <div class="timeline-right">
+          <div class="timeline-msg">上下文构建</div>
+          <div class="timeline-detail">ContextBuilder：统一组装身份模板 + 工作区 bootstrap 文件 + 压缩摘要 + 对话历史。AgentLoop 完整贯通</div>
+          <div class="timeline-tags">
+            <span class="timeline-tag tag-coral">agent/context.py</span>
+            <span class="timeline-tag tag-coral">agent/loop.py</span>
+            <span class="timeline-tag tag-green">main.py</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer style="background:var(--dark);padding:32px 48px;border-top:1px solid #2a2825;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+      <div style="font-size:13px;color:var(--on-dark-soft)">
+        <span style="color:var(--on-dark);font-weight:600;">bearclaw</span> &mdash; nanobot 最小实现学习项目
+      </div>
+      <div style="font-size:12px;color:var(--on-dark-soft)">
+        当前进度：上下文构建 &middot; 10/? commits
+      </div>
+    </div>
+  </footer>
+
+</div><!-- /main -->
+</div><!-- /layout -->
+
+<script>
+  // Mobile sidebar
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.querySelector('.sidebar-overlay').classList.toggle('visible');
+  }
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.querySelector('.sidebar-overlay').classList.remove('visible');
+  }
+
+  // Active sidebar link on scroll
+  const sections = document.querySelectorAll('[id^="mod-"], [id="flow"], [id="dep-graph"], [id="git-timeline"]');
+  const navLinks = document.querySelectorAll('.sidebar-nav a');
+
+  function updateActive() {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 120) current = s.id;
+    });
+    navLinks.forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+    });
+  }
+  window.addEventListener('scroll', updateActive, { passive: true });
+  updateActive();
+
+  // Animate in on scroll
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.style.animationPlayState = 'running';
+      }
+    });
+  }, { threshold: 0.08 });
+
+  document.querySelectorAll('.animate-in').forEach(el => {
+    el.style.animationPlayState = 'paused';
+    observer.observe(el);
+  });
+</script>
+</body>
+</html>

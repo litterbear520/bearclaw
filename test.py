@@ -1,59 +1,49 @@
 import os
 import subprocess
 
-from anthropic import Anthropic
 from dotenv import load_dotenv
-
-from bearclaw.mini_agent import history
-
+from anthropic import Anthropic
 
 load_dotenv()
 
-# 常量
 MODEL = "deepseek-v4-flash"
 WORKDIR = os.getcwd()
-SYSTEM = f"你是一个编程助手，你的工作区在{WORKDIR}"
-
-# 客户端
-client = Anthropic(api_key=os.getenv("LLM_API_KEY"), base_url=os.getenv("LLM_BASE_URL"))
-
-# 工具定义
+SYSTEM = f"You are a coding agent, you are working at {WORKDIR}"
 TOOLS: list = [{
     "name": "bash",
-    "description": "run a shell command",
+    "description": "Run a shell command.",
     "input_schema": {
         "type": "object",
         "properties": {"command": {"type": "string"}},
         "required": ["command"]
     }
 }]
+client = Anthropic(api_key=os.getenv("LLM_API_KEY"), base_url=os.getenv("LLM_BASE_URL"))
 
-# 执行工具
-def run_bash(command: str) -> str:
+
+def run_bash(command) -> str:
     try:
-        r = subprocess.run(command, cwd=WORKDIR, shell=True, capture_output=True, text=True, timeout=120)
+        r = subprocess.run(command, shell=True, text=True, capture_output=True, timeout=120, cwd=WORKDIR)
         out = (r.stdout + r.stderr).strip()
         return out if out else "no output"
     except Exception as e:
         return f"Error: {e}"
 
-# 构建循环
+
 def agent_loop(messages: list):
     while True:
         response = client.messages.create(
-            model=MODEL, system=SYSTEM, tools=TOOLS, max_tokens=4096, messages=messages
+            model=MODEL, system=SYSTEM, tools=TOOLS, max_tokens=2000, messages=messages
         )
         messages.append({"role": "assistant", "content": response.content})
-
         if response.stop_reason != "tool_use":
             return
-
         results = []
         for block in response.content:
             if block.type == "tool_use":
-                print(f"使用工具：{block.name}, 参数：{block.input}")
-                output = run_bash(str(block.input))
-                print(f"工具结果：{output}")
+                print(f"ToolUse: {block.name}, Schema: {block.input}")
+                output = run_bash(**block.input)
+                print(f"ToolResult: {output}")
                 results.append({
                     "type": "tool_result",
                     "tool_use_id": block.id,
@@ -62,12 +52,11 @@ def agent_loop(messages: list):
         messages.append({"role": "user", "content": results})
 
 
-# 主函数
 if __name__ == "__main__":
-    print("welcome")
+    print("Welcome!")
     history = []
     while True:
-        try: 
+        try:
             query = input(">> ")
         except Exception:
             break

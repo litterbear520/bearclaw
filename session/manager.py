@@ -34,7 +34,7 @@ class Session:
         self.updated_at = datetime.now()
 
     def estimate_tokens(self) -> int:
-        from utils.tokens import estimate_message_tokens
+        from utils.helpers import estimate_message_tokens
         return sum(estimate_message_tokens(msg) for msg in self.messages[self.last_consolidated:])
 
 
@@ -60,6 +60,7 @@ class SessionManager:
 
         messages = []
         metadata = {}
+        last_consolidated = 0
         created_at = None
         updated_at = None
 
@@ -102,5 +103,7 @@ class SessionManager:
             f.write(json.dumps(metadata_line, ensure_ascii=False) + "\n")
             for msg in session.messages:
                 f.write(json.dumps(msg, ensure_ascii=False) + "\n")
+            f.flush()
+            os.fsync(f.fileno())
 
         os.replace(tmp_path, path)

@@ -3,12 +3,10 @@ import glob as g
 from pathlib import Path
 from tools.base import Tool
 
-WORKDIR = Path.cwd()
 
-
-def safe_path(p: str) -> Path:
-    path = (WORKDIR / p).resolve()
-    if not path.is_relative_to(WORKDIR):
+def safe_path(workspace: Path, p: str) -> Path:
+    path = (workspace / p).resolve()
+    if not path.is_relative_to(workspace):
         raise ValueError(f"路径逃离工作区: {p}")
     return path
 
@@ -25,9 +23,12 @@ class ReadFileTool(Tool):
         "required": ["path"]
     }
 
+    def __init__(self, workspace: Path | None = None):
+        self.workspace = (workspace or Path.cwd()).resolve()
+
     def run(self, path: str, limit: int | None = None) -> str:
         try:
-            lines = safe_path(path).read_text().splitlines()
+            lines = safe_path(self.workspace, path).read_text().splitlines()
             if limit and limit < len(lines):
                 lines = lines[:limit] + [f"... {len(lines) - limit} more lines"]
             return "\n".join(lines)
@@ -47,9 +48,12 @@ class WriteFileTool(Tool):
         "required": ["path", "content"]
     }
 
+    def __init__(self, workspace: Path | None = None):
+        self.workspace = (workspace or Path.cwd()).resolve()
+
     def run(self, path: str, content: str) -> str:
         try:
-            file_path = safe_path(path)
+            file_path = safe_path(self.workspace, path)
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_text(content)
             return f"写入 {len(content)} 字到 {path}"
@@ -70,9 +74,12 @@ class EditFileTool(Tool):
         "required": ["path", "old_text", "new_text"]
     }
 
+    def __init__(self, workspace: Path | None = None):
+        self.workspace = (workspace or Path.cwd()).resolve()
+
     def run(self, path: str, old_text: str, new_text: str) -> str:
         try:
-            file_path = safe_path(path)
+            file_path = safe_path(self.workspace, path)
             text = file_path.read_text()
             if old_text not in text:
                 return f"Error: text not found in {path}"
@@ -93,11 +100,14 @@ class GlobTool(Tool):
         "required": ["pattern"]
     }
 
+    def __init__(self, workspace: Path | None = None):
+        self.workspace = (workspace or Path.cwd()).resolve()
+
     def run(self, pattern: str) -> str:
         try:
             results = []
-            for match in g.glob(pattern, root_dir=WORKDIR):
-                if (WORKDIR / match).resolve().is_relative_to(WORKDIR):
+            for match in g.glob(pattern, root_dir=self.workspace):
+                if (self.workspace / match).resolve().is_relative_to(self.workspace):
                     results.append(match)
             return "\n".join(results) if results else "no matches"
         except Exception as e:

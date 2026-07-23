@@ -14,8 +14,8 @@ load_dotenv()
 async def main():
     bus = MessageBus()
     provider = make_provider()
-    tools = load_tools()
     workspace = Path.cwd()
+    tools = load_tools(workspace)
 
     loop = AgentLoop(bus, provider, tools, workspace)
     loop_task = asyncio.create_task(loop.run())
@@ -38,6 +38,8 @@ async def main():
     outbound_task = asyncio.create_task(consume_outbound())
     print("Welcome to bearclaw!")
     io_loop = asyncio.get_event_loop()
+    
+    # 获取用户输入
     try:
         while True:
             try:

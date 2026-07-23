@@ -20,7 +20,7 @@ class ToolRegistry:
     def run(self, name: str, **kwargs) -> str:
         tool = self._tools.get(name)
         if not tool:
-            return f"unknow tool: {name}. available: {list(self._tools.keys())}"
+            return f"unknown tool: {name}. available: {list(self._tools.keys())}"
         try:
             return tool.run(**kwargs)
         except Exception as e:
