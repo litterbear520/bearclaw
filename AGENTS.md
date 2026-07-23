@@ -55,11 +55,13 @@ LLM响应 → session.messages → MessageBus(outbound) → 打印输出
 
 ### 当前进行中
 
-Tool 工厂方法模式已完成（`ToolContext` + `Tool.create(ctx)`），与 nanobot 对齐。下一步参照 roadmap 继续推进。
+AgentRunner 已对齐 nanobot 的纯函数式设计（`AgentRunResult` + `_save_turn`）。用户正在进行**期中复习**——通过 `html/bearclaw-architecture.html` 架构全景图回顾已完成的所有模块，确认理解后继续 roadmap。
 
 ## Constraints
 
 - **只做减法**：保持 nanobot 的命名和结构，不重命名、不重新设计。
+- **变量/函数命名对齐 nanobot**：给出代码前先查 nanobot 里对应的变量名、函数名、字段名，严格一致，不自己发明。
+- **函数/方法对齐 nanobot**：nanobot 里有独立方法的逻辑（如 `_save_turn`），bearclaw 也必须写成独立方法，不能内联到调用处。先查 nanobot 的结构再给代码。
 - **模块位置对齐 nanobot**：新增/移动模块时先查 nanobot 里放在哪。
 - **中文交流**：解释和注释用中文。
 - **同步进度**：每次代码变更后，必须更新本文件的"当前进行中"和"模块对应关系"等相关段落，同时同步 `html/bearclaw-architecture.html` 架构图。

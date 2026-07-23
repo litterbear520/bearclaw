@@ -732,7 +732,7 @@
 
   <div class="sidebar-footer">
     11 commits &middot; 26 source files<br>
-    8 modules &middot; 18 classes
+    8 modules &middot; 19 classes
   </div>
 </nav>
 
@@ -750,7 +750,7 @@
           <div class="hero-stat-label">子模块</div>
         </div>
         <div class="hero-stat">
-          <div class="hero-stat-value">18</div>
+          <div class="hero-stat-value">19</div>
           <div class="hero-stat-label">类 / 数据类</div>
         </div>
         <div class="hero-stat">
@@ -1153,7 +1153,8 @@
               </div>
               <div class="class-methods">
                 <div class="method-item"><span class="method-name">__init__(bus, provider, tools, workspace)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">初始化 SessionManager, MemoryStore, Consolidator, Dream, AgentRunner, ContextBuilder</span></div>
-                <div class="method-item"><span class="method-name">run()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">消费 inbound &rarr; 压缩 &rarr; 构建上下文 &rarr; runner &rarr; save &rarr; dream &rarr; 发布 outbound</span></div>
+                <div class="method-item"><span class="method-name">run()</span> <span class="method-sep">&mdash;</span> <span class="method-desc">消费 inbound &rarr; 压缩 &rarr; 构建上下文 &rarr; runner &rarr; _save_turn &rarr; dream &rarr; 发布 outbound</span></div>
+                <div class="method-item"><span class="method-name">_save_turn(session, messages, skip)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">跳过初始消息，将新增消息打时间戳后存入 session</span></div>
               </div>
             </div>
           </div>
@@ -1172,12 +1173,22 @@
             </div>
             <div class="class-block">
               <div class="class-header">
-                <span class="class-badge badge-class">CLASS</span>
-                <span class="class-name">AgentRunner</span>
-                <span class="class-desc">LLM 对话 + 工具执行器</span>
+                <span class="class-badge badge-dataclass">DATACLASS</span>
+                <span class="class-name">AgentRunResult</span>
+                <span class="class-desc">运行结果</span>
               </div>
               <div class="class-methods">
-                <div class="method-item"><span class="method-name">run(spec, session)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">多轮循环：provider.chat() &rarr; 解析 tool_calls &rarr; ToolRegistry.run() &rarr; 追加结果</span></div>
+                <div class="method-item"><span class="method-name">final_content, messages</span></div>
+              </div>
+            </div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-class">CLASS</span>
+                <span class="class-name">AgentRunner</span>
+                <span class="class-desc">LLM 对话 + 工具执行器（纯函数式，不碰 session）</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">run(spec)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">多轮循环：provider.chat() &rarr; 解析 tool_calls &rarr; ToolRegistry.run() &rarr; 返回 AgentRunResult</span></div>
               </div>
             </div>
           </div>

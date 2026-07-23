@@ -4,7 +4,7 @@ from pathlib import Path
 
 from bus.events import OutboundMessage
 from bus.queue import MessageBus
-from session.manager import SessionManager
+from session.manager import Session, SessionManager
 from memory.store import MemoryStore, Consolidator
 from memory.dream import Dream
 from agent.runner import AgentRunner, AgentRunSpec
@@ -40,6 +40,14 @@ class AgentLoop:
         )
         self.dream = Dream(self.store, provider)
 
+    def _save_turn(self, session: Session, messages: list[dict], skip: int) -> None:
+        from datetime import datetime
+        
+        for m in messages[skip:]:
+            entry = dict(m)
+            entry.setdefault("timestamp", datetime.now().isoformat())
+            session.messages.append(entry)
+        
     async def run(self) -> None:
         self._running = True
         print("[AgentLoop] 启动")
@@ -77,15 +85,13 @@ class AgentLoop:
                     tools=self.tools,
                     provider=self.provider,
                 )
-                await io_loop.run_in_executor(None, lambda: self.runner.run(spec, session))
+                result = await io_loop.run_in_executor(None, lambda: self.runner.run(spec))
+                self._save_turn(session, result.messages, len(messages))
                 self.sessions.save(session)
                 await io_loop.run_in_executor(None, self.dream.run)
 
-                response = ""
-                for m in reversed(session.messages):
-                    if m.get("role") == "assistant" and m.get("content"):
-                        response = m["content"]
-                        break
+                response = result.final_content or ""
+
             except Exception as e:
                 print(f"[AgentLoop] 错误: {e}")
                 response = f"处理出错: {e}"

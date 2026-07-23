@@ -1,9 +1,9 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from providers.base import LLMProvider
 from tools.registry import ToolRegistry
-from session.manager import Session
+
 
 @dataclass
 class AgentRunSpec:
@@ -13,9 +13,15 @@ class AgentRunSpec:
     max_iterations: int = 50
 
 
+@dataclass
+class AgentRunResult:
+    final_content: str | None
+    messages: list[dict[str, Any]] = field(default_factory=list)
+
+
 class AgentRunner:
 
-    def run(self, spec: AgentRunSpec, session: Session) -> None:
+    def run(self, spec: AgentRunSpec) -> AgentRunResult:
 
         messages = list(spec.initial_messages)
 
@@ -31,11 +37,13 @@ class AgentRunner:
                     {"id": tc.id, "type": "function", "function": {"name": tc.name, "arguments": tc.args}}
                     for tc in response.tool_calls
                 ]
-            session.messages.append(ai_msg)
             messages.append(ai_msg)
 
             if response.finish_reason != "tool_calls":
-                return
+                return AgentRunResult(
+                    final_content=response.content,
+                    messages=messages
+                )
 
             for tc in response.tool_calls:
                 print(f"使用工具：{tc.name}, 参数：{tc.args}")
@@ -46,5 +54,6 @@ class AgentRunner:
                     "tool_call_id": tc.id,
                     "content": output,
                 }
-                session.messages.append(tool_msg)
                 messages.append(tool_msg)
+
+        return AgentRunResult(final_content=None, messages=messages)
