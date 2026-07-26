@@ -1569,7 +1569,12 @@
             <div class="func-row">
               <span class="class-badge badge-func">FUNC</span>
               <span class="class-name">estimate_prompt_tokens(messages, tools?)</span>
-              <span class="class-desc">估算完整 prompt 链（所有消息 + 工具定义）的总 token 数</span>
+              <span class="class-desc">完整统计消息字段，缓存稳定的工具定义 token 数</span>
+            </div>
+            <div class="func-row">
+              <span class="class-badge badge-func">FUNC</span>
+              <span class="class-name">estimate_prompt_tokens_chain(provider, model, messages, tools?)</span>
+              <span class="class-desc">优先使用 Provider 可选计数器，失败时回退 tiktoken</span>
             </div>
           </div>
         </div>

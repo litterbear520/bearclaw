@@ -13,7 +13,7 @@ bearclaw 是通过**逆向学习** [nanobot](../AGENTS.md) 来理解 AI Agent �
 
 **核心原则**：只做减法——保留 nanobot 的变量名、类名、模块结构和数据流，去掉尚未学到的模块和复杂的鲁棒性处理。**不改名、不重新设计**。
 
-学习路线记录在 `html/nanobot-roadmap.html`，当前进度：上下文构建（ContextBuilder）已完成，正在完善 Consolidator 的 token 估算精度（对齐 nanobot 的完整 prompt 链估算）。
+学习路线记录在 `html/nanobot-roadmap.html`，当前进度：期中复习已完成；正在完善 Consolidator 的 token 估算精度，已实现工具定义 token 缓存与 `estimate_prompt_tokens_chain()`，下一步接入 Consolidator。
 
 ## Architecture
 
@@ -55,7 +55,7 @@ LLM响应 → session.messages → MessageBus(outbound) → 打印输出
 
 ### 当前进行中
 
-Dream 已从独立类改为 `AgentLoop._run_dream` 方法，对齐 nanobot（通过 loop 复用 runner 执行）。用户正在进行**期中复习**——通过 `html/bearclaw-architecture.html` 架构全景图回顾已完成的所有模块，确认理解后继续 roadmap。
+期中复习已完成。当前正在对齐 nanobot 的完整 prompt token 估算链：`utils/helpers.py` 已支持消息字段完整计数、工具定义 token 缓存，以及 Provider 可选计数器 → tiktoken 的回退链；下一步将 `estimate_prompt_tokens_chain()` 接入 Consolidator。
 
 ## Constraints
 
@@ -63,5 +63,6 @@ Dream 已从独立类改为 `AgentLoop._run_dream` 方法，对齐 nanobot（通
 - **变量/函数命名对齐 nanobot**：给出代码前先查 nanobot 里对应的变量名、函数名、字段名，严格一致，不自己发明。
 - **函数/方法对齐 nanobot**：nanobot 里有独立方法的逻辑（如 `_save_turn`），bearclaw 也必须写成独立方法，不能内联到调用处。先查 nanobot 的结构再给代码。
 - **模块位置对齐 nanobot**：新增/移动模块时先查 nanobot 里放在哪。
+- **缺少依赖时先说明差异**：如果 bearclaw 尚未实现 nanobot 对应代码依赖，必须在给出代码前明确指出缺少什么、为什么本步需要简化，并征得用户确认；不得擅自改名、重新设计或静默简化。
 - **中文交流**：解释和注释用中文。
 - **同步进度**：每次代码变更后，必须更新本文件的"当前进行中"和"模块对应关系"等相关段落，同时同步 `html/bearclaw-architecture.html` 架构图。
