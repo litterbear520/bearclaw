@@ -10,7 +10,7 @@ from agent.runner import AgentRunner, AgentRunSpec
 from providers.base import LLMProvider
 from tools.registry import ToolRegistry
 from agent.context import ContextBuilder
-
+from utils.llm_runtime import LLMRuntime
 
 class AgentLoop:
 
@@ -80,9 +80,9 @@ class AgentLoop:
             try:
                 session = self.sessions.get_or_create(msg.session_key) # 获取当前对话
                 io_loop = asyncio.get_event_loop()
-
+                runtime = LLMRuntime.capture(self.provider, "default", context_window_tokens=200000)
                 await io_loop.run_in_executor(None, lambda: self.consolidator.maybe_consolidate(
-                    session, self.provider, context_window=2000, max_tokens=200,
+                    session, runtime=runtime,
                 ))
 
                 messages = self.context.build_messages(

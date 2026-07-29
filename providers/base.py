@@ -21,6 +21,13 @@ class LLMResponse:
         return len(self.tool_calls) > 0
 
 
+@dataclass(frozen=True)
+class GenerationSettings:
+    temperature: float = 0.7
+    max_tokens: int = 4096
+    reasoning_effort: str | None = None
+
+
 class LLMProvider(ABC):
     def __init__(self, api_key: str | None = None, base_url: str | None = None):
         self.api_key = api_key

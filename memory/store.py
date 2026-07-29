@@ -4,6 +4,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
+from utils.helpers import estimate_prompt_tokens_chain
+from utils.llm_runtime import LLMRuntime
 from utils.prompt_templates import render_template
 from session.manager import Session, SessionManager
 
@@ -132,8 +134,7 @@ class Consolidator:
         self._get_tool_definitions = get_tool_definitions
         self.consolidation_ratio = consolidation_ratio
 
-    def estimate_session_prompt_tokens(self, session: Session) -> int:
-        from utils.helpers import estimate_prompt_tokens
+    def estimate_session_prompt_tokens(self, session: Session, *, runtime: LLMRuntime) -> tuple[int, str]:
 
         history = session.messages[session.last_consolidated:]
         summary = session.metadata.get("_last_summary")
@@ -142,7 +143,12 @@ class Consolidator:
             current_message="[token-probe]",
             session_summary=summary,
         )
-        return estimate_prompt_tokens(probe_messages, self._get_tool_definitions())
+        return estimate_prompt_tokens_chain(
+            runtime.provider,
+            runtime.model,
+            probe_messages,
+            self._get_tool_definitions(),
+        )
 
     def pick_consolidation_boundary(self, session: Session, tokens_to_remove: int) -> tuple[int, int] | None:
         from utils.helpers import estimate_message_tokens
@@ -202,16 +208,15 @@ class Consolidator:
     def maybe_consolidate(
         self,
         session: Session,
-        provider,
-        context_window: int,
-        max_tokens: int,
+        *,
+        runtime: LLMRuntime,
     ) -> str | None:
-        budget = context_window - max_tokens - self._SAFETY_BUFFER
+        budget = runtime.context_window_tokens - runtime.generation.max_tokens - self._SAFETY_BUFFER
         if budget <= 0:
             return None
 
-        estimated = self.estimate_session_prompt_tokens(session)
-        print(f"[压缩检查] estimated={estimated} budget={budget}")
+        estimated, source = self.estimate_session_prompt_tokens(session, runtime=runtime)
+        print(f"[压缩检查] estimated={estimated} budget={budget} source={source}")
         if estimated < budget:
             return None
 
@@ -233,14 +238,14 @@ class Consolidator:
                 break
 
             print(f"[压缩] 开始压缩: chunk={len(chunk)} msgs, estimated={estimated}, target={target}")
-            summary = self.archive(chunk, provider, session_key=session.key)
+            summary = self.archive(chunk, runtime.provider, session_key=session.key)
             session.last_consolidated = end_idx
             self.sessions.save(session)
 
             if not summary:
                 break
 
-            estimated = self.estimate_session_prompt_tokens(session)
+            estimated, source = self.estimate_session_prompt_tokens(session, runtime=runtime)
 
         if summary and summary != "(nothing)":
             session.metadata["_last_summary"] = summary
