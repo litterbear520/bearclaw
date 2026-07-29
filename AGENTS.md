@@ -58,6 +58,37 @@ LLM响应 → session.messages → MessageBus(outbound) → 打印输出
 
 token 估算链路已全部贯通：`estimate_prompt_tokens_chain()` 已接入 `Consolidator`，通过 `LLMRuntime` 抽象传递 provider 运行时配置。`AgentLoop` 在每轮对话前调用 `LLMRuntime.capture()` 构建不可变快照，传入 `maybe_consolidate(runtime=runtime)`。`providers/base.py` 新增 `GenerationSettings` frozen dataclass。下一步进入 Phase 7（WebUI）或 Phase 8（生产化）。
 
+## Git Commit 规范
+
+采用 [Conventional Commits](https://www.conventionalcommits.org/) 格式，与 nanobot 风格对齐：
+
+```
+type(scope): 简短描述
+
+可选的详细说明（空一行后写）
+```
+
+**type 常用值**：
+- `feat` — 新功能
+- `fix` — 修 bug
+- `refactor` — 重构（不改行为）
+- `docs` — 文档变更
+- `chore` — 构建/工具/依赖等杂务
+
+**scope**：受影响的模块，如 `memory`、`agent`、`providers`、`tools`、`utils`
+
+**示例**：
+```
+feat(tools): 工具系统可插拔自动发现
+refactor(memory): 接入estimate_prompt_tokens_chain完成token估算链路
+docs: 同步架构文档，反映LLMRuntime和token链路完成
+```
+
+**规则**：
+- 标题行不超过 72 字符
+- 需要补充说明时，标题后空一行再写 body
+- AI 辅助的提交附加 `Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>`
+
 ## Constraints
 
 - **只做减法**：保持 nanobot 的命名和结构，不重命名、不重新设计。
