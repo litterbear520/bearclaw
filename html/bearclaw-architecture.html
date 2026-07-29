@@ -731,8 +731,8 @@
   </div>
 
   <div class="sidebar-footer">
-    11 commits &middot; 25 source files<br>
-    8 modules &middot; 18 classes
+    12 commits &middot; 26 source files<br>
+    8 modules &middot; 20 classes
   </div>
 </nav>
 
@@ -750,15 +750,15 @@
           <div class="hero-stat-label">子模块</div>
         </div>
         <div class="hero-stat">
-          <div class="hero-stat-value">18</div>
+          <div class="hero-stat-value">20</div>
           <div class="hero-stat-label">类 / 数据类</div>
         </div>
         <div class="hero-stat">
-          <div class="hero-stat-value">25</div>
+          <div class="hero-stat-value">26</div>
           <div class="hero-stat-label">源文件</div>
         </div>
         <div class="hero-stat">
-          <div class="hero-stat-value">11</div>
+          <div class="hero-stat-value">12</div>
           <div class="hero-stat-label">Git 提交</div>
         </div>
       </div>
@@ -1253,6 +1253,16 @@
             </div>
             <div class="class-block">
               <div class="class-header">
+                <span class="class-badge badge-dataclass">DATACLASS</span>
+                <span class="class-name">GenerationSettings</span>
+                <span class="class-desc">LLM 生成参数（frozen）</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">temperature, max_tokens, reasoning_effort</span></div>
+              </div>
+            </div>
+            <div class="class-block">
+              <div class="class-header">
                 <span class="class-badge badge-abc">ABC</span>
                 <span class="class-name">LLMProvider</span>
                 <span class="class-desc">提供者基类</span>
@@ -1524,10 +1534,10 @@
                 <span class="class-desc">上下文压缩器（接收 build_messages / get_tool_definitions 回调）</span>
               </div>
               <div class="class-methods">
-                <div class="method-item"><span class="method-name">estimate_session_prompt_tokens(session)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">模拟完整 prompt 链（系统提示+历史+工具）估算总 token</span></div>
+                <div class="method-item"><span class="method-name">estimate_session_prompt_tokens(session, runtime)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">通过 estimate_prompt_tokens_chain 估算总 token，返回 (count, source)</span></div>
                 <div class="method-item"><span class="method-name">pick_consolidation_boundary(session, tokens_to_remove)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">在 user 消息边界找安全切割点，返回 (idx, removed_tokens)</span></div>
                 <div class="method-item"><span class="method-name">archive(messages, provider)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">调用 LLM 生成摘要 &rarr; 存入 MemoryStore</span></div>
-                <div class="method-item"><span class="method-name">maybe_consolidate(session, provider, ...)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">自动检测 token 超限 &rarr; 多轮切割压缩</span></div>
+                <div class="method-item"><span class="method-name">maybe_consolidate(session, runtime)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">接收 LLMRuntime，自动检测 token 超限 &rarr; 多轮切割压缩</span></div>
               </div>
             </div>
           </div>
@@ -1552,6 +1562,20 @@
               <span class="class-badge badge-func">FUNC</span>
               <span class="class-name">render_template(name, strip?, **kwargs)</span>
               <span class="class-desc">Jinja2 模板渲染，从 templates/ 目录加载</span>
+            </div>
+          </div>
+          <div class="file-block">
+            <div class="file-name">llm_runtime.py</div>
+            <div class="class-block">
+              <div class="class-header">
+                <span class="class-badge badge-dataclass">DATACLASS</span>
+                <span class="class-name">LLMRuntime</span>
+                <span class="class-desc">不可变运行时快照（frozen, slots）</span>
+              </div>
+              <div class="class-methods">
+                <div class="method-item"><span class="method-name">provider, model, generation, context_window_tokens</span></div>
+                <div class="method-item"><span class="method-name">capture(provider, model, context_window_tokens)</span> <span class="method-sep">&mdash;</span> <span class="method-desc">@classmethod 工厂：从 provider 捕获 GenerationSettings 快照</span></div>
+              </div>
             </div>
           </div>
           <div class="file-block">
@@ -1611,7 +1635,7 @@
   <section class="section timeline-section" id="git-timeline">
     <div class="section-header" style="padding:0 0 40px;">
       <h2 style="color:var(--on-dark)">Git 演进时间线</h2>
-      <p style="color:var(--on-dark-soft)">从单文件 mini_agent 到模块化架构的 11 步旅程</p>
+      <p style="color:var(--on-dark-soft)">从单文件 mini_agent 到模块化架构的 12 步旅程</p>
     </div>
 
     <div class="timeline-wrap">
@@ -1777,7 +1801,7 @@
           <div class="timeline-hash"></div>
           <div class="timeline-idx">#11</div>
         </div>
-        <div class="timeline-center"><div class="timeline-dot" style="background:var(--success);box-shadow:0 0 0 4px var(--dark),0 0 12px rgba(93,184,114,0.4)"></div><div class="timeline-line"></div></div>
+        <div class="timeline-center"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
         <div class="timeline-right">
           <div class="timeline-msg">Tool 工厂方法 + ToolContext</div>
           <div class="timeline-detail">对齐 nanobot 的 Tool.create(ctx) 模式：ToolContext dataclass 传递上下文，loader 统一 cls.create(ctx)，消除 try/except 类型检查问题</div>
@@ -1786,6 +1810,24 @@
             <span class="timeline-tag tag-amber">tools/base.py</span>
             <span class="timeline-tag tag-amber">tools/filesystem.py</span>
             <span class="timeline-tag tag-amber">tools/loader.py</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-left">
+          <div class="timeline-hash"></div>
+          <div class="timeline-idx">#12</div>
+        </div>
+        <div class="timeline-center"><div class="timeline-dot" style="background:var(--success);box-shadow:0 0 0 4px var(--dark),0 0 12px rgba(93,184,114,0.4)"></div><div class="timeline-line"></div></div>
+        <div class="timeline-right">
+          <div class="timeline-msg">LLMRuntime + token 估算链路贯通</div>
+          <div class="timeline-detail">新增 GenerationSettings frozen dataclass 和 LLMRuntime 运行时快照抽象。estimate_prompt_tokens_chain 正式接入 Consolidator，AgentLoop 通过 LLMRuntime.capture() 驱动</div>
+          <div class="timeline-tags">
+            <span class="timeline-tag tag-green">providers/base.py</span>
+            <span class="timeline-tag tag-coral">utils/llm_runtime.py</span>
+            <span class="timeline-tag tag-coral">memory/store.py</span>
+            <span class="timeline-tag tag-coral">agent/loop.py</span>
           </div>
         </div>
       </div>
@@ -1800,7 +1842,7 @@
         <span style="color:var(--on-dark);font-weight:600;">bearclaw</span> &mdash; nanobot 最小实现学习项目
       </div>
       <div style="font-size:12px;color:var(--on-dark-soft)">
-        当前进度：Tool 工厂方法 &middot; 11/? commits
+        当前进度：LLMRuntime + token 链路贯通 &middot; 12/? commits
       </div>
     </div>
   </footer>

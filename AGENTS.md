@@ -13,7 +13,7 @@ bearclaw 是通过**逆向学习** [nanobot](../AGENTS.md) 来理解 AI Agent �
 
 **核心原则**：只做减法——保留 nanobot 的变量名、类名、模块结构和数据流，去掉尚未学到的模块和复杂的鲁棒性处理。**不改名、不重新设计**。
 
-学习路线记录在 `html/nanobot-roadmap.html`，当前进度：期中复习已完成；正在完善 Consolidator 的 token 估算精度，已实现工具定义 token 缓存与 `estimate_prompt_tokens_chain()`，下一步接入 Consolidator。
+学习路线记录在 `html/nanobot-roadmap.html`，当前进度：token 估算链路已完成（含 `LLMRuntime` 抽象和 `GenerationSettings`），`estimate_prompt_tokens_chain()` 已接入 Consolidator，AgentLoop 通过 `LLMRuntime.capture()` 驱动整条链路。
 
 ## Architecture
 
@@ -42,6 +42,7 @@ LLM响应 → session.messages → MessageBus(outbound) → 打印输出
 | `tools/` | `agent/tools/` | Tool ABC（含 create 工厂方法）+ Registry + 自动发现 + bash/filesystem 实现 |
 | `session/manager.py` | `session/manager.py` | Session dataclass + JSONL 持久化 |
 | `utils/helpers.py` | `utils/helpers.py` | token 估算、模板同步 |
+| `utils/llm_runtime.py` | `utils/llm_runtime.py` | LLMRuntime frozen dataclass（捕获 provider 运行时配置快照） |
 | `utils/prompt_templates.py` | `utils/prompt_templates.py` | Jinja2 模板渲染 |
 
 ### 关键简化点（与 nanobot 的差异）
@@ -55,7 +56,7 @@ LLM响应 → session.messages → MessageBus(outbound) → 打印输出
 
 ### 当前进行中
 
-期中复习已完成。当前正在对齐 nanobot 的完整 prompt token 估算链：`utils/helpers.py` 已支持消息字段完整计数、工具定义 token 缓存，以及 Provider 可选计数器 → tiktoken 的回退链；下一步将 `estimate_prompt_tokens_chain()` 接入 Consolidator。
+token 估算链路已全部贯通：`estimate_prompt_tokens_chain()` 已接入 `Consolidator`，通过 `LLMRuntime` 抽象传递 provider 运行时配置。`AgentLoop` 在每轮对话前调用 `LLMRuntime.capture()` 构建不可变快照，传入 `maybe_consolidate(runtime=runtime)`。`providers/base.py` 新增 `GenerationSettings` frozen dataclass。下一步进入 Phase 7（WebUI）或 Phase 8（生产化）。
 
 ## Constraints
 
