@@ -511,16 +511,123 @@
   }
   .func-row:last-child { margin-bottom: 0; }
 
-  /* ========== DEPENDENCY GRAPH (SVG) ========== */
-  .dep-graph-wrap {
+  /* ========== DEPENDENCY GRAPH — INTERACTIVE ========== */
+  .dep-graph-modern {
     background: var(--dark);
     border-radius: 12px;
-    padding: 40px 24px;
-    overflow-x: auto;
+    padding: 48px 24px 32px;
+    position: relative;
+    overflow: hidden;
   }
-  .dep-graph-wrap svg {
-    display: block;
-    margin: 0 auto;
+  .dep-graph-svg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .dep-layers {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    position: relative;
+    z-index: 2;
+  }
+  .dep-layer {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .dep-layer-tag {
+    width: 56px;
+    flex-shrink: 0;
+    text-align: right;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--on-dark-soft);
+    line-height: 1.3;
+  }
+  .dep-layer-nodes {
+    display: flex;
+    flex: 1;
+    justify-content: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .dg-node {
+    background: var(--dark-elevated);
+    border: 1px solid rgba(250,249,245,0.08);
+    border-radius: 10px;
+    padding: 12px 18px;
+    min-width: 128px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: inherit;
+  }
+  .dg-node:hover,
+  .dg-node.dg-highlight {
+    border-color: var(--node-color, var(--coral));
+    box-shadow: 0 0 24px color-mix(in srgb, var(--node-color, var(--coral)) 15%, transparent);
+    transform: translateY(-2px);
+  }
+  .dg-node.dg-dimmed {
+    opacity: 0.18;
+    transform: none;
+  }
+  .dg-node-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dg-node-info { display: flex; flex-direction: column; gap: 2px; }
+  .dg-node-name {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--on-dark);
+    line-height: 1.2;
+  }
+  .dg-node-meta {
+    font-size: 11px;
+    color: var(--on-dark-soft);
+    line-height: 1.2;
+  }
+  .dep-legend {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 28px;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 2;
+  }
+  .dep-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--on-dark-soft);
+  }
+  .dep-legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+  .dep-legend-line {
+    width: 20px; height: 2px;
+    border-radius: 1px;
+  }
+  @media (max-width: 900px) {
+    .dep-layer { flex-direction: column; gap: 8px; }
+    .dep-layer-tag { width: auto; text-align: center; }
+    .dep-layer-nodes { gap: 10px; }
+    .dg-node { min-width: 110px; padding: 10px 14px; }
   }
 
   /* ========== GIT TIMELINE ========== */
@@ -731,8 +838,8 @@
   </div>
 
   <div class="sidebar-footer">
-    12 commits &middot; 26 source files<br>
-    8 modules &middot; 20 classes
+    19 commits &middot; 25 source files<br>
+    8 modules &middot; 30 classes
   </div>
 </nav>
 
@@ -750,15 +857,15 @@
           <div class="hero-stat-label">子模块</div>
         </div>
         <div class="hero-stat">
-          <div class="hero-stat-value">20</div>
+          <div class="hero-stat-value">30</div>
           <div class="hero-stat-label">类 / 数据类</div>
         </div>
         <div class="hero-stat">
-          <div class="hero-stat-value">26</div>
+          <div class="hero-stat-value">25</div>
           <div class="hero-stat-label">源文件</div>
         </div>
         <div class="hero-stat">
-          <div class="hero-stat-value">12</div>
+          <div class="hero-stat-value">19</div>
           <div class="hero-stat-label">Git 提交</div>
         </div>
       </div>
@@ -885,129 +992,132 @@
       <p>箭头表示"依赖 / 调用"方向，颜色对应模块</p>
     </div>
 
-    <div class="dep-graph-wrap">
-      <svg viewBox="0 0 900 580" width="900" height="580" xmlns="http://www.w3.org/2000/svg" style="font-family:'Cascadia Code','JetBrains Mono',monospace">
-        <defs>
-          <marker id="arrow-coral" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-            <path d="M0 0 L8 3 L0 6Z" fill="#cc785c"/>
-          </marker>
-          <marker id="arrow-teal" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-            <path d="M0 0 L8 3 L0 6Z" fill="#5db8a6"/>
-          </marker>
-          <marker id="arrow-amber" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-            <path d="M0 0 L8 3 L0 6Z" fill="#e8a55a"/>
-          </marker>
-          <marker id="arrow-green" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-            <path d="M0 0 L8 3 L0 6Z" fill="#5db872"/>
-          </marker>
-          <marker id="arrow-muted" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-            <path d="M0 0 L8 3 L0 6Z" fill="#6c6a64"/>
-          </marker>
-        </defs>
+    <div class="dep-graph-modern" id="dep-graph-container">
+      <svg class="dep-graph-svg" id="dep-graph-svg"></svg>
 
-        <!--
-          Layout: 5 layers, top-to-bottom, no crossings.
+      <div class="dep-layers">
+        <!-- Layer 0: Entry -->
+        <div class="dep-layer">
+          <div class="dep-layer-tag">入口</div>
+          <div class="dep-layer-nodes">
+            <a class="dg-node" data-id="main" data-color="#cc785c" href="#mod-entry" style="--node-color:#cc785c">
+              <div class="dg-node-dot" style="background:#cc785c"></div>
+              <div class="dg-node-info">
+                <div class="dg-node-name">main.py</div>
+                <div class="dg-node-meta">入口 · 2 funcs</div>
+              </div>
+            </a>
+          </div>
+        </div>
 
-          Layer 0:  main.py                          (入口)
-          Layer 1:  channels/    agent/    providers/ (核心三件)
-          Layer 2:  bus/         tools/               (基础设施)
-          Layer 3:  session/     memory/              (持久化)
-          Layer 4:  utils/       templates/           (辅助)
-        -->
+        <!-- Layer 1: Core -->
+        <div class="dep-layer">
+          <div class="dep-layer-tag">核心</div>
+          <div class="dep-layer-nodes">
+            <a class="dg-node" data-id="agent" data-color="#cc785c" href="#mod-agent" style="--node-color:#cc785c">
+              <div class="dg-node-dot" style="background:#cc785c"></div>
+              <div class="dg-node-info">
+                <div class="dg-node-name">agent/</div>
+                <div class="dg-node-meta">4 files · 6 classes</div>
+              </div>
+            </a>
+          </div>
+        </div>
 
-        <!-- ── Layer 0: main.py ── -->
-        <rect x="380" y="20" width="140" height="40" rx="8" fill="rgba(204,120,92,0.18)" stroke="#cc785c" stroke-width="1.2"/>
-        <text x="450" y="45" text-anchor="middle" fill="#cc785c" font-size="13" font-weight="600">main.py</text>
+        <!-- Layer 2: Messaging -->
+        <div class="dep-layer">
+          <div class="dep-layer-tag">通信</div>
+          <div class="dep-layer-nodes">
+            <a class="dg-node" data-id="bus" data-color="#5db8a6" href="#mod-bus" style="--node-color:#5db8a6">
+              <div class="dg-node-dot" style="background:#5db8a6"></div>
+              <div class="dg-node-info">
+                <div class="dg-node-name">bus/</div>
+                <div class="dg-node-meta">2 files · 3 classes</div>
+              </div>
+            </a>
+            <a class="dg-node" data-id="channels" data-color="#e8a55a" href="#mod-channels" style="--node-color:#e8a55a">
+              <div class="dg-node-dot" style="background:#e8a55a"></div>
+              <div class="dg-node-info">
+                <div class="dg-node-name">channels/</div>
+                <div class="dg-node-meta">1 file · 1 class</div>
+              </div>
+            </a>
+          </div>
+        </div>
 
-        <!-- ── Layer 1: channels / agent / providers ── -->
-        <rect x="80" y="120" width="140" height="40" rx="8" fill="rgba(232,165,90,0.15)" stroke="#e8a55a" stroke-width="1.2"/>
-        <text x="150" y="145" text-anchor="middle" fill="#e8a55a" font-size="13" font-weight="600">channels/</text>
+        <!-- Layer 3: Interfaces -->
+        <div class="dep-layer">
+          <div class="dep-layer-tag">接口</div>
+          <div class="dep-layer-nodes">
+            <a class="dg-node" data-id="providers" data-color="#5db872" href="#mod-providers" style="--node-color:#5db872">
+              <div class="dg-node-dot" style="background:#5db872"></div>
+              <div class="dg-node-info">
+                <div class="dg-node-name">providers/</div>
+                <div class="dg-node-meta">4 files · 6 classes</div>
+              </div>
+            </a>
+            <a class="dg-node" data-id="tools" data-color="#e8a55a" href="#mod-tools" style="--node-color:#e8a55a">
+              <div class="dg-node-dot" style="background:#e8a55a"></div>
+              <div class="dg-node-info">
+                <div class="dg-node-name">tools/</div>
+                <div class="dg-node-meta">6 files · 8 classes</div>
+              </div>
+            </a>
+          </div>
+        </div>
 
-        <rect x="380" y="120" width="140" height="40" rx="8" fill="rgba(204,120,92,0.18)" stroke="#cc785c" stroke-width="1.2"/>
-        <text x="450" y="145" text-anchor="middle" fill="#cc785c" font-size="13" font-weight="600">agent/</text>
+        <!-- Layer 4: Data -->
+        <div class="dep-layer">
+          <div class="dep-layer-tag">数据</div>
+          <div class="dep-layer-nodes">
+            <a class="dg-node" data-id="session" data-color="#5db8a6" href="#mod-session" style="--node-color:#5db8a6">
+              <div class="dg-node-dot" style="background:#5db8a6"></div>
+              <div class="dg-node-info">
+                <div class="dg-node-name">session/</div>
+                <div class="dg-node-meta">1 file · 3 classes</div>
+              </div>
+            </a>
+            <a class="dg-node" data-id="memory" data-color="#cc785c" href="#mod-memory" style="--node-color:#cc785c">
+              <div class="dg-node-dot" style="background:#cc785c"></div>
+              <div class="dg-node-info">
+                <div class="dg-node-name">memory/</div>
+                <div class="dg-node-meta">1 file · 2 classes</div>
+              </div>
+            </a>
+          </div>
+        </div>
 
-        <rect x="680" y="120" width="140" height="40" rx="8" fill="rgba(93,184,114,0.12)" stroke="#5db872" stroke-width="1.2"/>
-        <text x="750" y="145" text-anchor="middle" fill="#5db872" font-size="13" font-weight="600">providers/</text>
+        <!-- Layer 5: Utilities -->
+        <div class="dep-layer">
+          <div class="dep-layer-tag">辅助</div>
+          <div class="dep-layer-nodes">
+            <a class="dg-node" data-id="utils" data-color="#8e8b82" href="#mod-utils" style="--node-color:#8e8b82">
+              <div class="dg-node-dot" style="background:#8e8b82"></div>
+              <div class="dg-node-info">
+                <div class="dg-node-name">utils/</div>
+                <div class="dg-node-meta">3 files · 1 class</div>
+              </div>
+            </a>
+            <a class="dg-node" data-id="templates" data-color="#8e8b82" href="#mod-templates" style="--node-color:#8e8b82">
+              <div class="dg-node-dot" style="background:#8e8b82"></div>
+              <div class="dg-node-info">
+                <div class="dg-node-name">templates/</div>
+                <div class="dg-node-meta">6 模板文件</div>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
 
-        <!-- ── Layer 2: bus / tools ── -->
-        <rect x="80" y="230" width="140" height="40" rx="8" fill="rgba(93,184,166,0.15)" stroke="#5db8a6" stroke-width="1.2"/>
-        <text x="150" y="255" text-anchor="middle" fill="#5db8a6" font-size="13" font-weight="600">bus/</text>
-
-        <rect x="680" y="230" width="140" height="40" rx="8" fill="rgba(232,165,90,0.15)" stroke="#e8a55a" stroke-width="1.2"/>
-        <text x="750" y="255" text-anchor="middle" fill="#e8a55a" font-size="13" font-weight="600">tools/</text>
-
-        <!-- ── Layer 3: session / memory ── -->
-        <rect x="280" y="330" width="140" height="40" rx="8" fill="rgba(93,184,166,0.15)" stroke="#5db8a6" stroke-width="1.2"/>
-        <text x="350" y="355" text-anchor="middle" fill="#5db8a6" font-size="13" font-weight="600">session/</text>
-
-        <rect x="500" y="330" width="140" height="40" rx="8" fill="rgba(204,120,92,0.18)" stroke="#cc785c" stroke-width="1.2"/>
-        <text x="570" y="355" text-anchor="middle" fill="#cc785c" font-size="13" font-weight="600">memory/</text>
-
-        <!-- ── Layer 4: utils / templates ── -->
-        <rect x="280" y="440" width="140" height="40" rx="8" fill="rgba(142,139,130,0.15)" stroke="#8e8b82" stroke-width="1.2"/>
-        <text x="350" y="465" text-anchor="middle" fill="#8e8b82" font-size="13" font-weight="600">utils/</text>
-
-        <rect x="500" y="440" width="140" height="40" rx="8" fill="rgba(142,139,130,0.15)" stroke="#8e8b82" stroke-width="1.2"/>
-        <text x="570" y="465" text-anchor="middle" fill="#8e8b82" font-size="13" font-weight="600">templates/</text>
-
-        <!-- ── EDGES (all top-to-bottom, no crossings) ── -->
-
-        <!-- main → agent (直下) -->
-        <path d="M450 60 L450 112" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
-        <!-- main → channels (左下) -->
-        <path d="M390 60 L190 112" fill="none" stroke="#cc785c" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arrow-coral)"/>
-        <!-- main → providers (右下) -->
-        <path d="M510 60 L710 112" fill="none" stroke="#cc785c" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arrow-coral)"/>
-        <!-- main → tools (远右下) -->
-        <path d="M520 50 Q820 80 770 222" fill="none" stroke="#cc785c" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arrow-coral)"/>
-
-        <!-- channels → bus (直下) -->
-        <path d="M150 160 L150 222" fill="none" stroke="#e8a55a" stroke-width="1.2" marker-end="url(#arrow-amber)"/>
-
-        <!-- agent → bus (左下) -->
-        <path d="M390 160 L210 222" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
-        <!-- agent → providers (右平) -->
-        <path d="M520 140 L672 140" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
-        <!-- agent → tools (右下) -->
-        <path d="M510 160 L700 222" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
-        <!-- agent → session (左下) -->
-        <path d="M410 160 L370 322" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
-        <!-- agent → memory (右下) -->
-        <path d="M480 160 L550 322" fill="none" stroke="#cc785c" stroke-width="1.2" marker-end="url(#arrow-coral)"/>
-        <!-- agent → utils (远下，虚线) -->
-        <path d="M420 160 L350 432" fill="none" stroke="#6c6a64" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-muted)"/>
-
-        <!-- memory → session (左平) -->
-        <path d="M500 350 L428 350" fill="none" stroke="#cc785c" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-coral)"/>
-        <!-- memory → utils (左下) -->
-        <path d="M530 370 L400 432" fill="none" stroke="#6c6a64" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-muted)"/>
-        <!-- memory → templates (右下) -->
-        <path d="M570 370 L570 432" fill="none" stroke="#6c6a64" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-muted)"/>
-        <!-- memory → tools (右上，虚线) -->
-        <path d="M640 340 Q740 300 740 278" fill="none" stroke="#cc785c" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-coral)"/>
-
-        <!-- utils → templates (右平) -->
-        <path d="M420 460 L492 460" fill="none" stroke="#6c6a64" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-muted)"/>
-
-        <!-- ── LEGEND ── -->
-        <rect x="80" y="505" width="740" height="55" rx="8" fill="rgba(250,249,245,0.04)" stroke="rgba(250,249,245,0.08)" stroke-width="1"/>
-        <text x="100" y="526" fill="#8e8b82" font-size="11" font-weight="600" letter-spacing="1">LEGEND</text>
-
-        <line x1="100" y1="544" x2="130" y2="544" stroke="#cc785c" stroke-width="1.5"/>
-        <text x="136" y="548" fill="#a09d96" font-size="11">直接依赖</text>
-
-        <line x1="240" y1="544" x2="270" y2="544" stroke="#6c6a64" stroke-width="1" stroke-dasharray="4 3"/>
-        <text x="276" y="548" fill="#a09d96" font-size="11">间接 / 辅助依赖</text>
-
-        <rect x="430" y="538" width="12" height="12" rx="3" fill="rgba(204,120,92,0.18)" stroke="#cc785c" stroke-width="0.8"/>
-        <text x="448" y="549" fill="#a09d96" font-size="11">核心模块</text>
-
-        <rect x="540" y="538" width="12" height="12" rx="3" fill="rgba(93,184,166,0.15)" stroke="#5db8a6" stroke-width="0.8"/>
-        <text x="558" y="549" fill="#a09d96" font-size="11">数据 / 存储</text>
-
-        <rect x="650" y="538" width="12" height="12" rx="3" fill="rgba(142,139,130,0.15)" stroke="#8e8b82" stroke-width="0.8"/>
-        <text x="668" y="549" fill="#a09d96" font-size="11">工具 / 辅助</text>
-      </svg>
+      <!-- Legend -->
+      <div class="dep-legend">
+        <div class="dep-legend-item"><div class="dep-legend-dot" style="background:#cc785c"></div>核心</div>
+        <div class="dep-legend-item"><div class="dep-legend-dot" style="background:#5db8a6"></div>数据 / 通信</div>
+        <div class="dep-legend-item"><div class="dep-legend-dot" style="background:#e8a55a"></div>工具 / 渠道</div>
+        <div class="dep-legend-item"><div class="dep-legend-dot" style="background:#5db872"></div>LLM 提供者</div>
+        <div class="dep-legend-item"><div class="dep-legend-dot" style="background:#8e8b82"></div>辅助</div>
+        <div class="dep-legend-item"><div class="dep-legend-line" style="background:rgba(204,120,92,0.5)"></div>hover 查看依赖</div>
+      </div>
     </div>
   </section>
 
@@ -1675,7 +1785,7 @@
   <section class="section timeline-section" id="git-timeline">
     <div class="section-header" style="padding:0 0 40px;">
       <h2 style="color:var(--on-dark)">Git 演进时间线</h2>
-      <p style="color:var(--on-dark-soft)">从单文件 mini_agent 到模块化架构的 12 步旅程</p>
+      <p style="color:var(--on-dark-soft)">从单文件 mini_agent 到模块化架构的 13 步旅程</p>
     </div>
 
     <div class="timeline-wrap">
@@ -1838,7 +1948,7 @@
 
       <div class="timeline-item">
         <div class="timeline-left">
-          <div class="timeline-hash"></div>
+          <div class="timeline-hash">72f0d82</div>
           <div class="timeline-idx">#11</div>
         </div>
         <div class="timeline-center"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
@@ -1856,10 +1966,10 @@
 
       <div class="timeline-item">
         <div class="timeline-left">
-          <div class="timeline-hash"></div>
+          <div class="timeline-hash">f55ef11</div>
           <div class="timeline-idx">#12</div>
         </div>
-        <div class="timeline-center"><div class="timeline-dot" style="background:var(--success);box-shadow:0 0 0 4px var(--dark),0 0 12px rgba(93,184,114,0.4)"></div><div class="timeline-line"></div></div>
+        <div class="timeline-center"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
         <div class="timeline-right">
           <div class="timeline-msg">LLMRuntime + token 估算链路贯通</div>
           <div class="timeline-detail">新增 GenerationSettings frozen dataclass 和 LLMRuntime 运行时快照抽象。estimate_prompt_tokens_chain 正式接入 Consolidator，AgentLoop 通过 LLMRuntime.capture() 驱动</div>
@@ -1868,6 +1978,25 @@
             <span class="timeline-tag tag-coral">utils/llm_runtime.py</span>
             <span class="timeline-tag tag-coral">memory/store.py</span>
             <span class="timeline-tag tag-coral">agent/loop.py</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-left">
+          <div class="timeline-hash">edd4ff8</div>
+          <div class="timeline-idx">#13</div>
+        </div>
+        <div class="timeline-center"><div class="timeline-dot" style="background:var(--success);box-shadow:0 0 0 4px var(--dark),0 0 12px rgba(93,184,114,0.4)"></div><div class="timeline-line"></div></div>
+        <div class="timeline-right">
+          <div class="timeline-msg">AutoCompact 空闲 session 自动压缩</div>
+          <div class="timeline-detail">AutoCompact 类实现 TTL 检测 + probe 预判 + 内存摘要缓存。AgentLoop 集成三个触点：__init__ 创建、TimeoutError 时 check_expired、对话前 prepare_session。Consolidator 新增 compact_idle_session，Session 新增 retain_recent_legal_suffix + RetentionResult，helpers 新增 find_legal_message_start</div>
+          <div class="timeline-tags">
+            <span class="timeline-tag tag-coral">agent/autocompact.py</span>
+            <span class="timeline-tag tag-coral">agent/loop.py</span>
+            <span class="timeline-tag tag-coral">memory/store.py</span>
+            <span class="timeline-tag tag-teal">session/manager.py</span>
+            <span class="timeline-tag tag-amber">utils/helpers.py</span>
           </div>
         </div>
       </div>
@@ -1882,7 +2011,7 @@
         <span style="color:var(--on-dark);font-weight:600;">bearclaw</span> &mdash; nanobot 最小实现学习项目
       </div>
       <div style="font-size:12px;color:var(--on-dark-soft)">
-        当前进度：LLMRuntime + token 链路贯通 &middot; 12/? commits
+        当前进度：AutoCompact 空闲 session 自动压缩 &middot; 19 commits
       </div>
     </div>
   </footer>
@@ -1916,6 +2045,104 @@
   }
   window.addEventListener('scroll', updateActive, { passive: true });
   updateActive();
+
+  // ── Dependency graph: draw connections + hover ──
+  const DG_EDGES = [
+    ['main','agent','#cc785c'],['main','bus','#cc785c'],['main','providers','#cc785c'],['main','tools','#cc785c'],
+    ['agent','bus','#cc785c'],['agent','providers','#cc785c'],['agent','tools','#cc785c'],
+    ['agent','session','#cc785c'],['agent','memory','#cc785c'],['agent','utils','#6c6a64'],
+    ['channels','bus','#e8a55a'],
+    ['memory','session','#5db8a6'],['memory','utils','#6c6a64'],['memory','templates','#6c6a64'],
+    ['utils','providers','#6c6a64'],
+  ];
+
+  function drawDepGraph() {
+    const box = document.getElementById('dep-graph-container');
+    const svg = document.getElementById('dep-graph-svg');
+    if (!box || !svg) return;
+    const cr = box.getBoundingClientRect();
+    svg.setAttribute('viewBox', '0 0 ' + cr.width + ' ' + cr.height);
+    svg.innerHTML = '';
+
+    const ns = 'http://www.w3.org/2000/svg';
+    const defs = document.createElementNS(ns, 'defs');
+
+    const markerColors = {'#cc785c':1,'#5db8a6':1,'#e8a55a':1,'#5db872':1,'#6c6a64':1};
+    Object.keys(markerColors).forEach(c => {
+      const m = document.createElementNS(ns, 'marker');
+      m.setAttribute('id', 'dga-' + c.slice(1));
+      m.setAttribute('markerWidth','6'); m.setAttribute('markerHeight','5');
+      m.setAttribute('refX','5'); m.setAttribute('refY','2.5');
+      m.setAttribute('orient','auto');
+      const p = document.createElementNS(ns, 'path');
+      p.setAttribute('d','M0 0 L6 2.5 L0 5Z'); p.setAttribute('fill', c);
+      m.appendChild(p); defs.appendChild(m);
+    });
+    svg.appendChild(defs);
+
+    DG_EDGES.forEach(([from, to, color]) => {
+      const fn = box.querySelector('[data-id="'+from+'"]');
+      const tn = box.querySelector('[data-id="'+to+'"]');
+      if (!fn || !tn) return;
+      const fr = fn.getBoundingClientRect();
+      const tr = tn.getBoundingClientRect();
+      const x1 = fr.left - cr.left + fr.width / 2;
+      const y1 = fr.top - cr.top + fr.height;
+      const x2 = tr.left - cr.left + tr.width / 2;
+      const y2 = tr.top - cr.top;
+      const dy = Math.abs(y2 - y1);
+      const goesUp = y2 < y1;
+      let d;
+      if (Math.abs(y2 - y1) < 4) {
+        const midY = y1 - 30;
+        d = 'M'+x1+' '+y1+' C'+x1+' '+midY+','+x2+' '+midY+','+x2+' '+y2;
+      } else if (goesUp) {
+        d = 'M'+x1+' '+(fr.top-cr.top)+' C'+x1+' '+(fr.top-cr.top-dy*0.4)+','+x2+' '+(y2+tr.height+dy*0.4)+','+x2+' '+(y2+tr.height);
+      } else {
+        d = 'M'+x1+' '+y1+' C'+x1+' '+(y1+dy*0.4)+','+x2+' '+(y2-dy*0.4)+','+x2+' '+y2;
+      }
+      const path = document.createElementNS(ns, 'path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill','none');
+      path.setAttribute('stroke', color);
+      path.setAttribute('stroke-width','1.2');
+      path.setAttribute('stroke-opacity','0.3');
+      path.setAttribute('marker-end','url(#dga-'+color.slice(1)+')');
+      path.dataset.from = from; path.dataset.to = to;
+      svg.appendChild(path);
+    });
+  }
+
+  document.querySelectorAll('.dg-node').forEach(node => {
+    const id = node.dataset.id;
+    node.addEventListener('mouseenter', () => {
+      const svg = document.getElementById('dep-graph-svg');
+      const connected = new Set([id]);
+      svg.querySelectorAll('path[data-from]').forEach(p => {
+        if (p.dataset.from === id || p.dataset.to === id) {
+          connected.add(p.dataset.from); connected.add(p.dataset.to);
+          p.setAttribute('stroke-opacity','0.85'); p.setAttribute('stroke-width','2.5');
+        } else {
+          p.setAttribute('stroke-opacity','0.06');
+        }
+      });
+      document.querySelectorAll('.dg-node').forEach(n => {
+        n.classList.toggle('dg-highlight', connected.has(n.dataset.id));
+        n.classList.toggle('dg-dimmed', !connected.has(n.dataset.id));
+      });
+    });
+    node.addEventListener('mouseleave', () => {
+      document.getElementById('dep-graph-svg').querySelectorAll('path[data-from]').forEach(p => {
+        p.setAttribute('stroke-opacity','0.3'); p.setAttribute('stroke-width','1.2');
+      });
+      document.querySelectorAll('.dg-node').forEach(n => {
+        n.classList.remove('dg-highlight','dg-dimmed');
+      });
+    });
+  });
+
+  drawDepGraph();
+  window.addEventListener('resize', drawDepGraph);
 
   // Animate in on scroll
   const observer = new IntersectionObserver((entries) => {
