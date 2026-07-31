@@ -137,7 +137,8 @@ class Consolidator:
     def estimate_session_prompt_tokens(self, session: Session, *, runtime: LLMRuntime) -> tuple[int, str]:
 
         history = session.messages[session.last_consolidated:]
-        summary = session.metadata.get("_last_summary")
+        meta = session.metadata.get("_last_summary")
+        summary = meta.get("text") if isinstance(meta, dict) else (meta if isinstance(meta, str) else None)
         probe_messages = self._build_messages(
             history=history,
             current_message="[token-probe]",
@@ -248,7 +249,60 @@ class Consolidator:
             estimated, source = self.estimate_session_prompt_tokens(session, runtime=runtime)
 
         if summary and summary != "(nothing)":
-            session.metadata["_last_summary"] = summary
+            session.metadata["_last_summary"] = {
+                "text": summary,
+                "last_active": session.updated_at.isoformat(),
+            }
             self.sessions.save(session)
+
+        return summary
+
+    def compact_idle_session(
+        self,
+        session_key: str,
+        *,
+        runtime: LLMRuntime,
+        max_suffix: int = 8,
+    ) -> str | None:
+        session = self.sessions.get_or_create(session_key)
+
+        messages_to_summarize = list(session.messages[session.last_consolidated:])
+        if not messages_to_summarize:
+            self.sessions.save(session)
+            return ""
+
+        probe = Session(
+            key=session.key,
+            messages=messages_to_summarize.copy(),
+            created_at=session.created_at,
+            updated_at=session.updated_at,
+            metadata={},
+            last_consolidated=0,
+        )
+        result = probe.retain_recent_legal_suffix(max_suffix, extend_to_user=True)
+        messages_to_keep = probe.messages
+        messages_to_remove = result.dropped[result.already_consolidated_count:]
+
+        if not messages_to_remove and not messages_to_keep:
+            self.sessions.save(session)
+            return ""
+
+        last_active = session.updated_at
+        summary: str | None = ""
+        if messages_to_remove:
+            summary = self.archive(messages_to_remove, runtime.provider, session_key=session_key)
+
+        if summary and summary != "(nothing)":
+            session.metadata["_last_summary"] = {
+                "text": summary,
+                "last_active": last_active.isoformat(),
+            }
+
+        session.messages = messages_to_keep
+        session.last_consolidated = 0
+        self.sessions.save(session)
+
+        if messages_to_remove:
+            print(f"[AutoCompact] {session_key}: archived={len(messages_to_remove)}, kept={len(messages_to_keep)}, summary={bool(summary)}")
 
         return summary

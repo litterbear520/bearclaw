@@ -8,6 +8,12 @@ from dataclasses import dataclass, field
 
 
 @dataclass
+class RetentionResult:
+    dropped: list[dict]
+    already_consolidated_count: int
+
+
+@dataclass
 class Session:
     key: str
     last_consolidated: int = 0
@@ -36,6 +42,67 @@ class Session:
     def estimate_tokens(self) -> int:
         from utils.helpers import estimate_message_tokens
         return sum(estimate_message_tokens(msg) for msg in self.messages[self.last_consolidated:])
+
+
+    def retain_recent_legal_suffix(
+        self,
+        max_messages: int,
+        *,
+        extend_to_user: bool = False,
+    ) -> RetentionResult:
+        if max_messages <= 0:
+            dropped = list(self.messages)
+            lc = self.last_consolidated
+            self.clear()
+            return RetentionResult(
+                dropped=dropped,
+                already_consolidated_count=min(lc, len(dropped)),
+            )
+        if len(self.messages) <= max_messages:
+            return RetentionResult(
+                dropped=[],
+                already_consolidated_count=0,
+            )
+
+        original = list(self.messages)
+        before_lc = self.last_consolidated
+
+        start_idx = max(0, len(self.messages) - max_messages)
+        if extend_to_user:
+            start_idx = next(
+                (i for i in range(start_idx, -1, -1) if self.messages[i].get("role") == "user"),
+                start_idx,
+            )
+        retained = self.messages[start_idx:]
+        first_user = next((i for i, m in enumerate(retained) if m.get("role") == "user"), None)
+        if first_user is not None:
+            retained = retained[first_user:]
+
+        from utils.helpers import find_legal_message_start
+        start = find_legal_message_start(retained)
+        if start:
+            retained = retained[start:]
+
+        retained_ids = set(id(m) for m in retained)
+        dropped = [m for m in original if id(m) not in retained_ids]
+
+        already_consolidated = sum(
+            1 for i, m in enumerate(original)
+            if i < before_lc and id(m) not in retained_ids
+        )
+        
+        new_lc = sum(
+            1 for i, m in enumerate(original)
+            if i < before_lc and id(m) in retained_ids
+        )
+
+        self.messages = retained
+        self.last_consolidated = new_lc
+        self.updated_at = datetime.now()
+        return RetentionResult(
+            dropped=dropped,
+            already_consolidated_count=already_consolidated,
+        )
 
 
 class SessionManager:
@@ -107,3 +174,22 @@ class SessionManager:
             os.fsync(f.fileno())
 
         os.replace(tmp_path, path)
+
+    def list_sessions(self) -> list[dict[str, Any]]:
+        sessions = []
+        for path in self.sessions_dir.glob("*.jsonl"):
+            try:
+                with open(path, encoding="utf-8") as f:
+                    first_line = f.readline().strip()
+                    if first_line:
+                        data = json.loads(first_line)
+                        if data.get("_type") == "metadata":
+                            fallback_time = datetime.fromtimestamp(path.stat().st_mtime).isoformat()
+                            sessions.append({
+                                "key": data.get("key") or path.stem,
+                                "created_at": data.get("created_at") or fallback_time,
+                                "updated_at": data.get("updated_at") or fallback_time,
+                            })
+            except FileNotFoundError:
+                continue
+        return sorted(sessions, key=lambda x: x.get("updated_at", ""), reverse=True)

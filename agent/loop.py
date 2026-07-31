@@ -11,6 +11,8 @@ from providers.base import LLMProvider
 from tools.registry import ToolRegistry
 from agent.context import ContextBuilder
 from utils.llm_runtime import LLMRuntime
+from agent.autocompact import AutoCompact
+
 
 class AgentLoop:
 
@@ -36,6 +38,11 @@ class AgentLoop:
             self.sessions,
             build_messages=self.context.build_messages,
             get_tool_definitions=self.tools.get_schema,
+        )
+        self.auto_compact = AutoCompact(
+            sessions=self.sessions,
+            consolidator=self.consolidator,
+            session_ttl_minutes=5,
         )
 
     def _run_dream(self) -> None:
@@ -63,6 +70,10 @@ class AgentLoop:
             entry = dict(m)
             entry.setdefault("timestamp", datetime.now().isoformat())
             session.messages.append(entry)
+
+    def _check_expired_sessions_if_due(self) -> None:
+        runtime = LLMRuntime.capture(self.provider, "default", context_window_tokens=200000)
+        self.auto_compact.check_expired(runtime)
         
     async def run(self) -> None:
         self._running = True
@@ -73,22 +84,25 @@ class AgentLoop:
             try:
                 msg = await asyncio.wait_for(self.bus.consume_inbound(), timeout=1.0)
             except asyncio.TimeoutError:
+                self._check_expired_sessions_if_due()
                 continue
             except asyncio.CancelledError:
                 break
 
             try:
                 session = self.sessions.get_or_create(msg.session_key) # 获取当前对话
+                session, pending_summary = self.auto_compact.prepare_session(session, msg.session_key)
                 io_loop = asyncio.get_event_loop()
                 runtime = LLMRuntime.capture(self.provider, "default", context_window_tokens=200000)
                 await io_loop.run_in_executor(None, lambda: self.consolidator.maybe_consolidate(
                     session, runtime=runtime,
                 ))
 
+                session_summary = pending_summary
                 messages = self.context.build_messages(
                     history=session.get_history(),
                     current_message=msg.content,
-                    session_summary=session.metadata.get("_last_summary"),
+                    session_summary=session_summary,
                 )
 
                 session.messages.append({

@@ -175,3 +175,20 @@ def sync_workspace_templates(workspace: Path) -> list[str]:
         _write(_TEMPLATES_ROOT / name, workspace / name)
 
     return added
+
+
+def find_legal_message_start(messages: list[dict[str, Any]]) -> int:
+    declared: set[str] = set()
+    start = 0
+    for i, msg in enumerate(messages):
+        role = msg.get("role")
+        if role == "assistant":
+            for tc in msg.get("tool_calls") or []:
+                if isinstance(tc, dict) and tc.get("id"):
+                    declared.add(str(tc["id"]))
+        elif role == "tool":
+            tid = msg.get("tool_call_id")
+            if tid and str(tid) not in declared:
+                start = i + 1
+                declared.clear()
+    return start

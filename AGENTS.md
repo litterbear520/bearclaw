@@ -35,6 +35,7 @@ LLM响应 → session.messages → MessageBus(outbound) → 打印输出
 | `agent/runner.py` | `agent/runner.py` | 多轮 LLM 对话 + 工具执行循环 |
 | `agent/context.py` | `agent/context.py` | 组装 system prompt + 历史 + 当前消息 |
 | `memory/store.py` | `agent/memory.py` | MemoryStore + Consolidator（同文件，与 nanobot 一致） |
+| `agent/autocompact.py` | `agent/autocompact.py` | AutoCompact：空闲 session 自动压缩调度 |
 | `agent/loop.py:_run_dream` | (commands.py cron 调度) | Dream 记忆整合（nanobot 通过 process_direct ephemeral 执行） |
 | `bus/` | `bus/` | MessageBus + InboundMessage/OutboundMessage |
 | `providers/` | `providers/` | LLMProvider ABC → Anthropic / OpenAI 兼容实现 |
@@ -48,7 +49,7 @@ LLM响应 → session.messages → MessageBus(outbound) → 打印输出
 ### 关键简化点（与 nanobot 的差异）
 
 - **同步 runner**：`AgentRunner.run()` 是同步的（nanobot 是 async），在 loop 中通过 `run_in_executor` 调用。
-- **无 AutoCompact**：只有 Consolidator，无运行时自动压缩。
+- **AutoCompact 同步版**：保留 nanobot 完整逻辑（TTL 检测、probe 预判、内存摘要缓存），但去掉 async、锁、schedule_background，改为同步直接调用。
 - **无 Hook/Governance**：无 AgentHook、ContextGovernor、注入回调。
 - **无 Skills/MCP/Config**：无技能系统、MCP 连接、Pydantic 配置。
 - **工具自动发现**：`tools/loader.py` 用 pkgutil 扫描，通过 `ToolContext` + `Tool.create(ctx)` 工厂方法统一注入上下文。
@@ -56,7 +57,7 @@ LLM响应 → session.messages → MessageBus(outbound) → 打印输出
 
 ### 当前进行中
 
-token 估算链路已全部贯通：`estimate_prompt_tokens_chain()` 已接入 `Consolidator`，通过 `LLMRuntime` 抽象传递 provider 运行时配置。`AgentLoop` 在每轮对话前调用 `LLMRuntime.capture()` 构建不可变快照，传入 `maybe_consolidate(runtime=runtime)`。`providers/base.py` 新增 `GenerationSettings` frozen dataclass。下一步进入 Phase 7（WebUI）或 Phase 8（生产化）。
+AutoCompact 已完成：空闲 session 自动压缩（TTL 检测 → probe 预判 → compact_idle_session → 内存摘要缓存）。AgentLoop 集成三个触点：__init__ 创建 AutoCompact、TimeoutError 时调 check_expired、对话前调 prepare_session。Consolidator 新增 compact_idle_session 方法，Session 新增 retain_recent_legal_suffix 和 RetentionResult，helpers 新增 find_legal_message_start。
 
 ## Git Commit 规范
 
